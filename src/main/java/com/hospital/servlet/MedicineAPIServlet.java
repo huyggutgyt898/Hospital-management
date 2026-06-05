@@ -5,8 +5,14 @@ import com.hospital.model.Medicine;
 import com.hospital.model.Account;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.Date;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -148,7 +154,27 @@ public class MedicineAPIServlet extends HttpServlet {
                 double unitPrice = Double.parseDouble(req.getParameter("unitPrice"));
                 String expiryDateStr = req.getParameter("expiryDate");
                 String supplier = req.getParameter("supplier");
-                
+
+                if (medicineName == null || medicineName.trim().isEmpty()) {
+                    out.print("{\"success\":false,\"message\":\"Tên thuốc không được để trống\"}");
+                    return;
+                }
+                if (stockQuantity <= 0) {
+                    out.print("{\"success\":false,\"message\":\"Số lượng tồn phải lớn hơn 0\"}");
+                    return;
+                }
+                if (unitPrice <= 0) {
+                    out.print("{\"success\":false,\"message\":\"Đơn giá phải lớn hơn 0\"}");
+                    return;
+                }
+                if (expiryDateStr != null && !expiryDateStr.isEmpty()) {
+                    LocalDate expiryDate = LocalDate.parse(expiryDateStr);
+                    if (!expiryDate.isAfter(LocalDate.now())) {
+                        out.print("{\"success\":false,\"message\":\"Hạn sử dụng phải là ngày mai trở đi\"}");
+                        return;
+                    }
+                }
+
                 Medicine medicine = new Medicine();
                 medicine.setMedicineName(medicineName);
                 medicine.setUnit(unit);
@@ -194,13 +220,34 @@ public class MedicineAPIServlet extends HttpServlet {
         if (pathInfo != null && pathInfo.matches("/\\d+")) {
             try {
                 int id = Integer.parseInt(pathInfo.substring(1));
-                String medicineName = req.getParameter("medicineName");
-                String unit = req.getParameter("unit");
-                int stockQuantity = Integer.parseInt(req.getParameter("stockQuantity"));
-                double unitPrice = Double.parseDouble(req.getParameter("unitPrice"));
-                String expiryDateStr = req.getParameter("expiryDate");
-                String supplier = req.getParameter("supplier");
-                
+                Map<String, String> putParams = parseFormBody(req);
+                String medicineName = putParams.get("medicineName");
+                String unit = putParams.get("unit");
+                int stockQuantity = Integer.parseInt(putParams.getOrDefault("stockQuantity", "0"));
+                double unitPrice = Double.parseDouble(putParams.getOrDefault("unitPrice", "0"));
+                String expiryDateStr = putParams.get("expiryDate");
+                String supplier = putParams.get("supplier");
+
+                if (medicineName == null || medicineName.trim().isEmpty()) {
+                    out.print("{\"success\":false,\"message\":\"Tên thuốc không được để trống\"}");
+                    return;
+                }
+                if (stockQuantity <= 0) {
+                    out.print("{\"success\":false,\"message\":\"Số lượng tồn phải lớn hơn 0\"}");
+                    return;
+                }
+                if (unitPrice <= 0) {
+                    out.print("{\"success\":false,\"message\":\"Đơn giá phải lớn hơn 0\"}");
+                    return;
+                }
+                if (expiryDateStr != null && !expiryDateStr.isEmpty()) {
+                    LocalDate expiryDate = LocalDate.parse(expiryDateStr);
+                    if (!expiryDate.isAfter(LocalDate.now())) {
+                        out.print("{\"success\":false,\"message\":\"Hạn sử dụng phải là ngày mai trở đi\"}");
+                        return;
+                    }
+                }
+
                 Medicine medicine = new Medicine();
                 medicine.setMedicineId(id);
                 medicine.setMedicineName(medicineName);
@@ -228,6 +275,30 @@ public class MedicineAPIServlet extends HttpServlet {
         out.flush();
     }
     
+    private Map<String, String> parseFormBody(HttpServletRequest req) throws IOException {
+        Map<String, String> params = new HashMap<>();
+        StringBuilder bodyBuilder = new StringBuilder();
+        String line;
+        try (java.io.BufferedReader reader = req.getReader()) {
+            while ((line = reader.readLine()) != null) {
+                bodyBuilder.append(line);
+            }
+        }
+        String body = bodyBuilder.toString();
+        if (body.isEmpty()) {
+            return params;
+        }
+        for (String pair : body.split("&")) {
+            String[] parts = pair.split("=", 2);
+            if (parts.length == 2) {
+                String key = URLDecoder.decode(parts[0], StandardCharsets.UTF_8.name());
+                String value = URLDecoder.decode(parts[1], StandardCharsets.UTF_8.name());
+                params.put(key, value);
+            }
+        }
+        return params;
+    }
+
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
@@ -254,9 +325,17 @@ public class MedicineAPIServlet extends HttpServlet {
                 } else {
                     out.print("{\"success\":false,\"message\":\"Xóa thất bại!\"}");
                 }
+            } catch (SQLException e) {
+                e.printStackTrace();
+                String msg = e.getMessage() != null ? e.getMessage() : "Lỗi hệ thống";
+                if (msg.contains("Cannot delete or update a parent row") || msg.toLowerCase().contains("foreign key")) {
+                    out.print("{\"success\":false,\"message\":\"Không thể xóa thuốc này vì đã có đơn thuốc liên quan. Vui lòng kiểm tra đơn thuốc hoặc ẩn thuốc.\"}");
+                } else {
+                    out.print("{\"success\":false,\"message\":\"" + escapeJson(msg) + "\"}");
+                }
             } catch (Exception e) {
                 e.printStackTrace();
-                out.print("{\"success\":false,\"message\":\"" + e.getMessage() + "\"}");
+                out.print("{\"success\":false,\"message\":\"" + escapeJson(e.getMessage()) + "\"}");
             }
         } else {
             out.print("{\"success\":false,\"message\":\"Invalid request\"}");

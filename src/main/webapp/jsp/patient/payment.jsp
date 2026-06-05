@@ -1,6 +1,5 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="com.hospital.model.Account" %>
-<%@ page import="java.util.*" %>
 <%@ include file="/jsp/common/patient_prefs.jsp" %>
 <%
     Account account = (Account) session.getAttribute("account");
@@ -8,396 +7,137 @@
         response.sendRedirect(request.getContextPath() + "/jsp/auth/login.jsp");
         return;
     }
-    
-    // Dữ liệu mẫu - thực tế sẽ lấy từ database
-    String invoiceId = request.getParameter("invoiceId") != null ? request.getParameter("invoiceId") : "INV-001";
-    String appointmentId = request.getParameter("appointmentId") != null ? request.getParameter("appointmentId") : "APT-001";
-    String doctorName = "Bác sĩ Nguyễn Văn An";
-    String appointmentDate = "2024-05-15";
-    double examinationFee = 200000;
-    double medicineFee = 350000;
-    double totalAmount = examinationFee + medicineFee;
+    String ctx = request.getContextPath();
+    String initialAppointmentId = request.getParameter("appointmentId");
+    if (initialAppointmentId == null) initialAppointmentId = "";
 %>
 <!DOCTYPE html>
 <html lang="<%= patientIsEn ? "en" : "vi" %>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= patientIsEn ? "Payment - HMS" : "Thanh toán - HMS" %></title>
+    <title><%= pt(patientIsEn, "Thanh toán - HMS", "Payment - HMS") %></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <%@ include file="/jsp/common/patient_head.jsp" %>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 40px 20px;
+            padding: 24px 16px;
         }
-        
-        .container-custom {
-            max-width: 1200px;
-            margin: 0 auto;
+        .container-custom { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; color: #fff; }
+        .header a { color: #fff; text-decoration: none; }
+        .payment-container { display: flex; gap: 24px; flex-wrap: wrap; }
+        .invoice-card, .payment-card {
+            background: #fff; border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden;
         }
-        
-        /* Header */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            color: white;
-        }
-        
-        .header a {
-            color: white;
-            text-decoration: none;
-        }
-        
-        /* Payment Container */
-        .payment-container {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
-        }
-        
-        /* Invoice Card */
-        .invoice-card {
-            flex: 1.2;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-            overflow: hidden;
-        }
-        
-        .invoice-header {
+        .invoice-card { flex: 1.2; min-width: 320px; }
+        .payment-card { flex: 1; min-width: 300px; }
+        .invoice-header, .payment-header {
             background: linear-gradient(135deg, #1e3a5f, #0f2b45);
-            color: white;
-            padding: 20px 25px;
+            color: #fff; padding: 18px 24px;
         }
-        
-        .invoice-header h3 {
-            margin: 0;
-            font-size: 20px;
+        .invoice-body, .payment-body { padding: 24px; }
+        .bill-select { margin-bottom: 16px; }
+        .bill-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 10px;
         }
-        
-        .invoice-body {
-            padding: 25px;
-        }
-        
-        .hospital-info {
-            text-align: center;
-            padding-bottom: 20px;
-            border-bottom: 2px dashed #e2e8f0;
-            margin-bottom: 20px;
-        }
-        
-        .hospital-info h2 {
-            color: #1e3a5f;
-            font-weight: 800;
-        }
-        
-        .invoice-info {
+        .bill-card {
+            padding: 16px;
+            border-radius: 14px;
             background: #f8fafc;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.2s;
         }
-        
-        .invoice-info-item {
-            margin: 5px 0;
+        .bill-card:hover {
+            transform: translateY(-1px);
+            border-color: #c7d2fe;
         }
-        
-        .invoice-info-item strong {
-            color: #475569;
+        .bill-card.selected {
+            border-color: #2563eb;
+            background: #eff6ff;
         }
-        
-        .table-details {
-            width: 100%;
-            margin-bottom: 20px;
+        .bill-select select {
+            width: 100%; padding: 10px 14px; border-radius: 10px;
+            border: 2px solid #e2e8f0; font-size: 14px;
         }
-        
+        .table-details { width: 100%; border-collapse: collapse; margin-top: 12px; }
         .table-details th, .table-details td {
-            padding: 12px;
-            border-bottom: 1px solid #e2e8f0;
+            padding: 10px 8px; border-bottom: 1px solid #e2e8f0; font-size: 14px;
         }
-        
-        .table-details th {
-            background: #f8fafc;
-            font-weight: 600;
-        }
-        
-        .total-row {
-            background: #f1f5f9;
-            font-weight: 700;
-            font-size: 18px;
-        }
-        
-        /* Payment Card */
-        .payment-card {
-            flex: 0.8;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-            overflow: hidden;
-            align-self: flex-start;
-            position: sticky;
-            top: 20px;
-        }
-        
-        .payment-header {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            padding: 20px 25px;
-        }
-        
-        .payment-body {
-            padding: 25px;
-        }
-        
+        .table-details th { background: #f8fafc; }
+        .total-row td { font-weight: 700; font-size: 16px; color: #047857; }
+        .discount-row td { color: #2563eb; }
         .amount-display {
-            text-align: center;
-            padding: 20px;
-            background: #f0fdf4;
-            border-radius: 16px;
-            margin-bottom: 25px;
-        }
-        
-        .amount-display .label {
-            font-size: 14px;
-            color: #065f46;
-        }
-        
-        .amount-display .value {
-            font-size: 32px;
-            font-weight: 800;
-            color: #059669;
-        }
-        
-        .payment-methods {
-            margin-bottom: 25px;
-        }
-        
-        .payment-method {
-            display: flex;
-            align-items: center;
-            padding: 15px;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .payment-method:hover {
-            border-color: #10b981;
-            background: #f0fdf4;
-        }
-        
-        .payment-method.selected {
-            border-color: #10b981;
-            background: #f0fdf4;
-        }
-        
-        .payment-method input {
-            margin-right: 12px;
-        }
-        
-        .payment-method i {
-            font-size: 24px;
-            width: 40px;
-            color: #64748b;
-        }
-        
-        .payment-method.selected i {
-            color: #10b981;
-        }
-        
-        .payment-method .method-name {
-            font-weight: 600;
-            flex: 1;
-        }
-        
-        .btn-pay {
-            width: 100%;
-            padding: 14px;
             background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s;
+            color: #fff; padding: 20px; border-radius: 14px; text-align: center; margin-bottom: 20px;
         }
-        
-        .btn-pay:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(16,185,129,0.35);
+        .amount-display .value { font-size: 32px; font-weight: 800; }
+        .payment-method {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 12px;
+            margin-bottom: 12px; cursor: pointer; transition: all 0.2s;
         }
-        
-        .secure-badge {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 12px;
-            color: #94a3b8;
+        .payment-method.selected { border-color: #2563eb; background: #eff6ff; }
+        .btn-pay {
+            width: 100%; background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff; border: none; padding: 14px; border-radius: 12px;
+            font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 8px;
         }
-        
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
+        .btn-pay:disabled { opacity: 0.6; cursor: not-allowed; }
+        .qr-panel {
+            display: none; text-align: center; margin-top: 16px;
+            padding: 16px; background: #f8fafc; border-radius: 12px;
         }
-        
-        .modal.show {
-            display: flex;
+        .qr-panel.show { display: block; }
+        .qr-panel img { max-width: 260px; border-radius: 12px; border: 2px solid #e2e8f0; }
+        .status-badge {
+            display: inline-block; padding: 6px 12px; border-radius: 20px;
+            font-size: 12px; font-weight: 600;
         }
-        
-        .modal-content {
-            background: white;
-            border-radius: 20px;
-            width: 90%;
-            max-width: 400px;
-            text-align: center;
-            padding: 30px;
-            animation: popIn 0.3s ease;
-        }
-        
-        @keyframes popIn {
-            from {
-                opacity: 0;
-                transform: scale(0.8);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-        
-        .success-icon {
-            width: 70px;
-            height: 70px;
-            background: #d1fae5;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 20px;
-        }
-        
-        .success-icon i {
-            font-size: 35px;
-            color: #10b981;
-        }
-        
-        .modal h4 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        
-        .btn-close-modal {
-            margin-top: 20px;
-            padding: 10px 30px;
-            background: #10b981;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        
-        @media (max-width: 768px) {
-            .payment-container {
-                flex-direction: column;
-            }
-            .payment-card {
-                position: static;
-            }
-        }
+        .status-unpaid { background: #fef3c7; color: #b45309; }
+        .status-pending { background: #dbeafe; color: #1d4ed8; }
+        .status-paid { background: #dcfce7; color: #166534; }
+        .empty-msg { text-align: center; padding: 40px; color: #64748b; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-content { background: #fff; padding: 32px; border-radius: 16px; text-align: center; max-width: 400px; }
     </style>
 </head>
 <body class="<%= patientIsDark ? "patient-dark" : "" %>">
 <div class="container-custom">
-    <!-- Header -->
     <div class="header">
-        <a href="${pageContext.request.contextPath}/index.jsp">
-            <i class="fas fa-arrow-left me-2"></i><%= pt(patientIsEn, "Quay lại trang chủ", "Back to home") %>
-        </a>
+        <a href="<%= ctx %>/index.jsp"><i class="fas fa-arrow-left me-2"></i><%= pt(patientIsEn, "Quay lại trang chủ", "Back to home") %></a>
         <div>
             <span><i class="fas fa-user-circle me-1"></i><%= account.getFullname() %></span>
-            <a href="${pageContext.request.contextPath}/logout" class="ms-3"><%= pt(patientIsEn, "Đăng xuất", "Logout") %></a>
+            <a href="<%= ctx %>/logout" class="ms-3"><%= pt(patientIsEn, "Đăng xuất", "Logout") %></a>
         </div>
     </div>
 
     <div class="payment-container">
-        <!-- Invoice Card -->
         <div class="invoice-card">
             <div class="invoice-header">
                 <h3><i class="fas fa-file-invoice me-2"></i><%= pt(patientIsEn, "HÓA ĐƠN THANH TOÁN", "PAYMENT INVOICE") %></h3>
             </div>
             <div class="invoice-body">
-                <div class="hospital-info">
-                    <h2>🏥 HMS</h2>
-                    <p>Bệnh viện đa khoa HMS<br>123 Đường Nguyễn Trãi, Hà Nội</p>
+                <div class="bill-select">
+                    <label class="form-label fw-bold"><%= pt(patientIsEn, "Danh sách hóa đơn cần thanh toán", "List of payable invoices") %></label>
+                    <div id="billList" class="bill-list"></div>
                 </div>
-                
-                <div class="invoice-info">
-                    <div class="invoice-info-item"><strong>Số hóa đơn:</strong> <%= invoiceId %></div>
-                    <div class="invoice-info-item"><strong>Ngày lập:</strong> <%= new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm").format(new java.util.Date()) %></div>
-                    <div class="invoice-info-item"><strong>Mã lịch hẹn:</strong> <%= appointmentId %></div>
-                    <div class="invoice-info-item"><strong>Bệnh nhân:</strong> <%= account.getFullname() %></div>
-                </div>
-                
-                <table class="table-details">
-                    <thead>
-                        <tr><th>Dịch vụ</th><th>Số lượng</th><th>Đơn giá</th><th>Thành tiền</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Phí khám bệnh (BS. <%= doctorName %>)</td>
-                            <td>1</td>
-                            <td><%= String.format("%,.0f", examinationFee) %>đ</td>
-                            <td><%= String.format("%,.0f", examinationFee) %>đ</td>
-                        </tr>
-                        <tr>
-                            <td>Thuốc điều trị</td>
-                            <td>1</td>
-                            <td><%= String.format("%,.0f", medicineFee) %>đ</td>
-                            <td><%= String.format("%,.0f", medicineFee) %>đ</td>
-                        </tr>
-                    </tbody>
-                    <tfoot>
-                        <tr class="total-row">
-                            <td colspan="3"><strong>Tổng cộng</strong></td>
-                            <td><strong><%= String.format("%,.0f", totalAmount) %>đ</strong></td>
-                        </tr>
-                    </tfoot>
-                </table>
-                
-                <div class="invoice-info" style="margin-top: 20px;">
-                    <div class="invoice-info-item"><strong>Hình thức thanh toán:</strong> <span id="selectedMethodLabel">Chưa chọn</span></div>
-                    <div class="invoice-info-item"><strong>Trạng thái:</strong> <span class="badge bg-warning">Chờ thanh toán</span></div>
+                <div id="invoiceContent">
+                    <div class="empty-msg"><i class="fas fa-spinner fa-spin"></i> <%= pt(patientIsEn, "Đang tải hóa đơn...", "Loading invoice...") %></div>
                 </div>
             </div>
         </div>
-        
-        <!-- Payment Card -->
+
         <div class="payment-card">
             <div class="payment-header">
                 <h3><i class="fas fa-credit-card me-2"></i><%= pt(patientIsEn, "THANH TOÁN", "PAYMENT") %></h3>
@@ -405,130 +145,202 @@
             <div class="payment-body">
                 <div class="amount-display">
                     <div class="label"><%= pt(patientIsEn, "SỐ TIỀN CẦN THANH TOÁN", "AMOUNT DUE") %></div>
-                    <div class="value"><%= String.format("%,.0f", totalAmount) %>đ</div>
+                    <div class="value" id="totalDisplay">0đ</div>
                 </div>
-                
-                <div class="payment-methods">
-                    <div class="payment-method" onclick="selectMethod('cash')">
+
+                <div id="payBlock">
+                    <div class="payment-method" onclick="selectMethod('cash', event)">
                         <input type="radio" name="paymentMethod" id="cash" value="cash">
-                        <i class="fas fa-money-bill-wave"></i>
-                        <span class="method-name">Tiền mặt tại quầy</span>
-                        <i class="fas fa-chevron-right"></i>
+                        <i class="fas fa-money-bill-wave fa-lg"></i>
+                        <span class="flex-grow-1"><%= pt(patientIsEn, "Tiền mặt (chờ admin xác nhận)", "Cash (admin confirmation)") %></span>
                     </div>
-                    <div class="payment-method" onclick="selectMethod('bank')">
-                        <input type="radio" name="paymentMethod" id="bank" value="bank">
-                        <i class="fas fa-university"></i>
-                        <span class="method-name">Chuyển khoản ngân hàng</span>
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                    <div class="payment-method" onclick="selectMethod('card')">
-                        <input type="radio" name="paymentMethod" id="card" value="card">
-                        <i class="fas fa-credit-card"></i>
-                        <span class="method-name">Thẻ tín dụng / Ghi nợ</span>
-                        <i class="fas fa-chevron-right"></i>
-                    </div>
-                    <div class="payment-method" onclick="selectMethod('qr')">
+                    <div class="payment-method" onclick="selectMethod('qr', event)">
                         <input type="radio" name="paymentMethod" id="qr" value="qr">
-                        <i class="fas fa-qrcode"></i>
-                        <span class="method-name">QR Code</span>
-                        <i class="fas fa-chevron-right"></i>
+                        <i class="fas fa-qrcode fa-lg"></i>
+                        <span class="flex-grow-1"><%= pt(patientIsEn, "Chuyển khoản/QR (chờ admin xác nhận)", "Bank transfer/QR (awaiting admin)") %></span>
                     </div>
+
+                    <div class="qr-panel" id="qrPanel">
+                        <p class="mb-2"><strong>HOANG MINH HIEU — MB Bank</strong><br>0961016972</p>
+                        <img src="<%= ctx %>/assets/img/payment-qr.png" alt="VietQR">
+                        <p class="mt-2 small text-muted"><%= pt(patientIsEn, "Chuyển khoản đúng số tiền bên trên và chờ admin xác nhận", "Transfer the exact amount shown and wait for admin confirmation") %></p>
+                    </div>
+
+                    <button type="button" class="btn-pay" id="btnPay" onclick="processPayment()">
+                        <i class="fas fa-shield-alt me-2"></i><%= pt(patientIsEn, "THANH TOÁN NGAY", "PAY NOW") %>
+                    </button>
                 </div>
-                
-                <button class="btn-pay" onclick="processPayment()">
-                    <i class="fas fa-shield-alt me-2"></i>THANH TOÁN NGAY
-                </button>
-                
-                <div class="secure-badge">
-                    <i class="fas fa-lock me-1"></i> Thanh toán an toàn, bảo mật
+                <div id="paidMessage" style="display:none;" class="text-center text-success fw-bold py-4">
+                    <i class="fas fa-check-circle fa-3x mb-3"></i>
+                    <p id="paidMessageText"></p>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Success Modal -->
 <div class="modal" id="successModal">
     <div class="modal-content">
-        <div class="success-icon">
-            <i class="fas fa-check-circle"></i>
-        </div>
-        <h4>Thanh toán thành công!</h4>
-        <p>Cảm ơn bạn đã sử dụng dịch vụ của HMS.<br>Hóa đơn của bạn đã được thanh toán.</p>
-        <button class="btn-close-modal" onclick="closeModalAndRedirect()">Về trang chủ</button>
+        <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+        <h4 id="modalTitle"><%= pt(patientIsEn, "Thành công", "Success") %></h4>
+        <p id="modalBody"></p>
+        <button class="btn btn-primary mt-3" onclick="closeModalAndRedirect()"><%= pt(patientIsEn, "Về trang chủ", "Back to home") %></button>
     </div>
 </div>
 
 <script>
+    const contextPath = '<%= ctx %>';
+    const patientLang = '<%= patientLang %>';
+    const initialAppointmentId = '<%= initialAppointmentId %>';
     let selectedMethod = null;
-    
-    function selectMethod(method) {
-        selectedMethod = method;
-        
-        // Update UI
-        document.querySelectorAll('.payment-method').forEach(el => {
-            el.classList.remove('selected');
-        });
-        event.currentTarget.classList.add('selected');
-        
-        // Check radio button
-        document.getElementById(method).checked = true;
-        
-        // Update label
-        const methodNames = {
-            'cash': 'Tiền mặt tại quầy',
-            'bank': 'Chuyển khoản ngân hàng',
-            'card': 'Thẻ tín dụng / Ghi nợ',
-            'qr': 'QR Code'
-        };
-        document.getElementById('selectedMethodLabel').innerText = methodNames[method];
+    let currentBill = null;
+
+    function fmt(n) {
+        return new Intl.NumberFormat('vi-VN').format(Math.round(n)) + 'đ';
     }
-    
+
+    function t(vi, en) { return patientLang === 'en' ? en : vi; }
+
+    function paymentStatusLabel(status) {
+        if (status === 'paid') return '<span class="status-badge status-paid">' + t('Đã thanh toán', 'Paid') + '</span>';
+        if (status === 'pending_admin') return '<span class="status-badge status-pending">' + t('Chờ admin xác nhận', 'Awaiting admin') + '</span>';
+        return '<span class="status-badge status-unpaid">' + t('Chưa thanh toán', 'Unpaid') + '</span>';
+    }
+
+    let bills = [];
+
+    async function loadBillList() {
+        const billList = document.getElementById('billList');
+        try {
+            const res = await fetch(contextPath + '/payment/my-bills');
+            bills = (await res.json()).filter(b => b.paymentStatus !== 'paid');
+            if (bills.length === 0) {
+                billList.innerHTML = '<div class="empty-msg"><i class="fas fa-info-circle"></i> ' + t('Chưa có hóa đơn cần thanh toán. Lịch hẹn phải hoàn thành và đã kê đơn.', 'No bills to pay yet.') + '</div>';
+                document.getElementById('invoiceContent').innerHTML = '<div class="empty-msg"><i class="fas fa-info-circle"></i> ' + t('Chưa có hóa đơn cần thanh toán. Lịch hẹn phải hoàn thành và đã kê đơn.', 'No bills to pay yet.') + '</div>';
+                updatePayUI({ paymentStatus: 'paid' });
+                return;
+            }
+
+            billList.innerHTML = bills.map(b =>
+                '<div id="bill-card-' + b.appointmentId + '" class="bill-card" onclick="selectBill(' + b.appointmentId + ')">' +
+                    '<div><strong>#' + b.appointmentId + '</strong> — ' + (b.doctorName || '') + '</div>' +
+                    '<div>' + (b.appointmentDate || '') + ' ' + (b.appointmentTime || '') + '</div>' +
+                    '<div>' + paymentStatusLabel(b.paymentStatus) + ' • <strong>' + fmt(b.totalAmount) + '</strong></div>' +
+                '</div>'
+            ).join('');
+
+            const selectedId = initialAppointmentId || bills[0].appointmentId;
+            selectBill(selectedId);
+        } catch (e) {
+            console.error(e);
+            billList.innerHTML = '<div class="empty-msg text-danger">' + t('Lỗi tải danh sách hóa đơn', 'Failed to load bill list') + '</div>';
+        }
+    }
+
+    async function selectBill(appointmentId) {
+        if (!appointmentId) return;
+        currentBill = bills.find(b => b.appointmentId === Number(appointmentId));
+        document.querySelectorAll('.bill-card').forEach(el => el.classList.remove('selected'));
+        const card = document.getElementById('bill-card-' + appointmentId);
+        if (card) card.classList.add('selected');
+        await loadInvoice(appointmentId);
+    }
+
+    async function loadInvoice(id) {
+        if (!id) return;
+        document.getElementById('invoiceContent').innerHTML = '<div class="empty-msg"><i class="fas fa-spinner fa-spin"></i></div>';
+        try {
+            const res = await fetch(contextPath + '/payment/invoice?appointmentId=' + id);
+            const data = await res.json();
+            if (!data.success) {
+                document.getElementById('invoiceContent').innerHTML = '<div class="empty-msg text-danger">' + (data.message || 'Error') + '</div>';
+                return;
+            }
+            currentBill = data;
+            renderInvoice(data);
+            updatePayUI(data);
+        } catch (e) {
+            document.getElementById('invoiceContent').innerHTML = '<div class="empty-msg text-danger">' + t('Lỗi tải hóa đơn', 'Failed to load invoice') + '</div>';
+        }
+    }
+
+    function renderInvoice(data) {
+        let rows = '';
+        (data.lines || []).forEach(line => {
+            rows += '<tr><td>' + line.description + '</td><td>' + line.quantity + ' ' + (line.unit || '') + '</td><td>' + fmt(line.unitPrice) + '</td><td>' + fmt(line.lineTotal) + '</td></tr>';
+        });
+        let discountHtml = '';
+        if (data.discountAmount > 0) {
+            discountHtml = '<tr class="discount-row"><td colspan="3">' + t('Giảm BHYT (80%)', 'Insurance discount (80%)') + '</td><td>-' + fmt(data.discountAmount) + '</td></tr>';
+        }
+        document.getElementById('invoiceContent').innerHTML =
+            '<div class="invoice-info" style="background:#f8fafc;padding:12px;border-radius:10px;margin-bottom:12px;">' +
+            '<div><strong>' + t('Mã lịch hẹn', 'Appointment') + ':</strong> #' + data.appointmentId + '</div>' +
+            '<div><strong>' + t('Bệnh nhân', 'Patient') + ':</strong> ' + (data.patientName || '') + '</div>' +
+            '<div><strong>' + t('Bác sĩ', 'Doctor') + ':</strong> ' + (data.doctorName || '') + '</div>' +
+            '<div><strong>' + t('Ngày khám', 'Date') + ':</strong> ' + (data.appointmentDate || '') + ' ' + (data.appointmentTime || '') + '</div>' +
+            '<div class="mt-2">' + paymentStatusLabel(data.paymentStatus) + (data.hasInsurance ? ' <span class="badge bg-primary">' + t('Có BHYT', 'Insured') + '</span>' : '') + '</div></div>' +
+            '<table class="table-details"><thead><tr><th>' + t('Dịch vụ', 'Service') + '</th><th>' + t('SL', 'Qty') + '</th><th>' + t('Đơn giá', 'Unit') + '</th><th>' + t('Thành tiền', 'Total') + '</th></tr></thead><tbody>' +
+            rows + '<tr><td colspan="3"><strong>' + t('Tạm tính', 'Subtotal') + '</strong></td><td>' + fmt(data.subtotal) + '</td></tr>' +
+            discountHtml + '<tr class="total-row"><td colspan="3"><strong>' + t('Tổng thanh toán', 'Total due') + '</strong></td><td><strong>' + fmt(data.totalAmount) + '</strong></td></tr></tbody></table>';
+        document.getElementById('totalDisplay').textContent = fmt(data.totalAmount);
+    }
+
+    function updatePayUI(data) {
+        const paid = data.paymentStatus === 'paid';
+        const pending = data.paymentStatus === 'pending_admin';
+        document.getElementById('payBlock').style.display = (paid || pending) ? 'none' : 'block';
+        document.getElementById('paidMessage').style.display = (paid || pending) ? 'block' : 'none';
+        if (paid) document.getElementById('paidMessageText').textContent = t('Hóa đơn đã thanh toán.', 'Invoice already paid.');
+        if (pending) document.getElementById('paidMessageText').textContent = t('Đã gửi yêu cầu thanh toán. Chờ admin xác nhận.', 'Payment request sent. Awaiting admin confirmation.');
+    }
+
+    function selectMethod(method, ev) {
+        selectedMethod = method;
+        document.querySelectorAll('.payment-method').forEach(el => el.classList.remove('selected'));
+        if (ev && ev.currentTarget) ev.currentTarget.classList.add('selected');
+        document.getElementById(method).checked = true;
+        document.getElementById('qrPanel').classList.toggle('show', method === 'qr');
+    }
+
     async function processPayment() {
-        if (!selectedMethod) {
-            alert('Vui lòng chọn phương thức thanh toán!');
+        if (!currentBill || !currentBill.appointmentId) {
+            alert(t('Vui lòng chọn hóa đơn', 'Please select an invoice'));
             return;
         }
-        
-        // Disable button and show loading
-        const btn = document.querySelector('.btn-pay');
+        if (!selectedMethod) {
+            alert(t('Vui lòng chọn phương thức thanh toán', 'Please select payment method'));
+            return;
+        }
+        const btn = document.getElementById('btnPay');
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
-        
-        // Simulate payment processing (call API here)
-        setTimeout(() => {
-            // Show success modal
-            document.getElementById('successModal').classList.add('show');
-            
-            // Reset button
+        try {
+            const body = new URLSearchParams();
+            body.append('appointmentId', currentBill.appointmentId);
+            body.append('paymentMethod', selectedMethod);
+            const res = await fetch(contextPath + '/payment/submit', { method: 'POST', body: body });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('modalBody').textContent = data.message;
+                document.getElementById('successModal').classList.add('show');
+                await loadInvoice(currentBill.appointmentId);
+                await loadBillList();
+            } else {
+                alert(data.message || t('Thanh toán thất bại', 'Payment failed'));
+            }
+        } catch (e) {
+            alert(t('Lỗi kết nối', 'Connection error'));
+        } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-shield-alt me-2"></i>THANH TOÁN NGAY';
-        }, 1500);
-        
-        // Thực tế sẽ gọi API:
-        // const response = await fetch(contextPath + '/payment/process', {
-        //     method: 'POST',
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify({
-        //         invoiceId: '<%= invoiceId %>',
-        //         paymentMethod: selectedMethod,
-        //         amount: <%= totalAmount %>
-        //     })
-        // });
-    }
-    
-    function closeModalAndRedirect() {
-        window.location.href = '${pageContext.request.contextPath}/index.jsp';
-    }
-    
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('successModal');
-        if (event.target === modal) {
-            modal.classList.remove('show');
         }
     }
+
+    function closeModalAndRedirect() {
+        window.location.href = contextPath + '/index.jsp';
+    }
+
+    document.addEventListener('DOMContentLoaded', loadBillList);
 </script>
-<script src="${pageContext.request.contextPath}/js/patient-preferences.js"></script>
+<script src="<%= ctx %>/js/patient-preferences.js"></script>
 </body>
 </html>

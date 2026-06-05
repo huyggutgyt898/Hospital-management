@@ -21,6 +21,7 @@ public class Patient {
     private Date dateOfBirth;
     private Timestamp createdAt;
     private int accountId;
+    private String healthInsurance;
     
     private String  username;
     private String  email;
@@ -148,6 +149,23 @@ public class Patient {
     
     public void setAccountId(int accountId) {
         this.accountId = accountId;
+    }
+
+    public String getHealthInsurance() {
+        return healthInsurance;
+    }
+
+    public void setHealthInsurance(String healthInsurance) {
+        this.healthInsurance = healthInsurance;
+    }
+
+    public boolean hasHealthInsurance() {
+        if (healthInsurance == null) {
+            return false;
+        }
+        String v = healthInsurance.trim();
+        return "Có".equalsIgnoreCase(v) || "co".equalsIgnoreCase(v)
+                || "yes".equalsIgnoreCase(v) || "1".equals(v);
     }
     
     // ==================== Helper Methods ====================

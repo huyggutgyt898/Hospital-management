@@ -3,8 +3,10 @@ package com.hospital.servlet;
 import com.hospital.dao.AppointmentDAO;
 import com.hospital.dao.DoctorDAO;
 import com.hospital.dao.PatientDAO;
+import com.hospital.dao.PaymentDAO;
 import com.hospital.model.Appointment;
 import com.hospital.model.Doctor;
+import com.hospital.model.Payment;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
@@ -21,6 +23,7 @@ public class PatientAPIServlet extends HttpServlet {
     private DoctorDAO doctorDAO = new DoctorDAO();
     private AppointmentDAO appointmentDAO = new AppointmentDAO();
     private PatientDAO patientDAO = new PatientDAO();
+    private PaymentDAO paymentDAO = new PaymentDAO();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -48,6 +51,81 @@ public class PatientAPIServlet extends HttpServlet {
         }
 
         String pathInfo = req.getPathInfo();
+
+        // ---- GET /patient/notifications ----
+        if ("/notifications".equals(pathInfo)) {
+            try {
+                if (patientId == null) {
+                    out.print("[]");
+                    return;
+                }
+
+                StringBuilder json = new StringBuilder("[");
+                boolean first = true;
+
+                // 1) Đặt lịch (pending/confirmed) -> loại booking/information
+                try {
+                    List<Appointment> appointments = appointmentDAO.getAppointmentsByPatient(patientId);
+                    for (Appointment a : appointments) {
+                        String type = "booking";
+                        String title = "Đặt lịch thành công";
+                        String message = "Bạn đã đặt lịch với " + (a.getDoctorName() != null ? a.getDoctorName() : "bác sĩ") + " - " + a.getAppointmentDate() + " lúc " + a.getAppointmentTime();
+                        String time = a.getCreatedAt() != null ? a.getCreatedAt().toString() : "";
+                        if ("confirmed".equalsIgnoreCase(a.getStatus())) {
+                            title = "Lịch hẹn đã được xác nhận";
+                            type = "booking_confirmed";
+                        }
+
+                        if (!first) json.append(","); first = false;
+                        json.append("{")
+                            .append("\"type\":\"").append(type).append("\",")
+                            .append("\"title\":\"").append(escapeJson(title)).append("\",")
+                            .append("\"message\":\"").append(escapeJson(message)).append("\",")
+                            .append("\"time\":\"").append(escapeJson(time)).append("\",")
+                            .append("\"appointmentId\":").append(a.getAppointmentId())
+                            .append("}");
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                // 2) Payments -> invoice (unpaid) and payment success (paid)
+                try {
+                    List<Payment> pays = paymentDAO.listByPatient(patientId);
+                    for (Payment p : pays) {
+                        String type = "invoice";
+                        String title = "Hóa đơn thanh toán";
+                        String message = "Hóa đơn cho lịch #" + p.getAppointmentId() + ": " + p.getTotalAmount() + " VND";
+                        String time = p.getCreatedAt() != null ? p.getCreatedAt().toString() : "";
+
+                        if ("paid".equalsIgnoreCase(p.getPaymentStatus())) {
+                            type = "payment_success";
+                            title = "Thanh toán thành công";
+                            message = "Thanh toán #" + p.getPaymentId() + ": " + p.getTotalAmount() + " VND";
+                            time = p.getPaidAt() != null ? p.getPaidAt().toString() : time;
+                        }
+
+                        if (!first) json.append(","); first = false;
+                        json.append("{")
+                            .append("\"type\":\"").append(type).append("\",")
+                            .append("\"title\":\"").append(escapeJson(title)).append("\",")
+                            .append("\"message\":\"").append(escapeJson(message)).append("\",")
+                            .append("\"time\":\"").append(escapeJson(time)).append("\",")
+                            .append("\"paymentId\":").append(p.getPaymentId())
+                            .append("}");
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                json.append("]");
+                out.print(json.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
+                out.print("[]");
+            }
+            return;
+        }
 
         // ---- GET /patient/doctors ----
         if ("/doctors".equals(pathInfo)) {
@@ -86,8 +164,10 @@ public class PatientAPIServlet extends HttpServlet {
                 for (Appointment a : appointments) {
                     if (date.equals(a.getAppointmentDate())
                             && ("pending".equals(a.getStatus()) || "confirmed".equals(a.getStatus()))) {
+                        String at = a.getAppointmentTime() != null ? a.getAppointmentTime() : "";
+                        if (at.length() >= 5) at = at.substring(0,5); // normalize to HH:mm to match client slots
                         if (!first) json.append(",");
-                        json.append("\"").append(escapeJson(a.getAppointmentTime())).append("\"");
+                        json.append("\"").append(escapeJson(at)).append("\"");
                         first = false;
                     }
                 }

@@ -9,9 +9,14 @@ package com.hospital.servlet;
  * @author Admin
  */
 import com.hospital.dao.AccountDAO;
+import com.hospital.dao.PatientDAO;
+import com.hospital.dao.DBConnection;
 import com.hospital.model.Account;
+import com.hospital.model.Patient;
 import com.hospital.util.PasswordHash;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.SQLException;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -21,6 +26,7 @@ import javax.servlet.http.HttpServletResponse;
 @WebServlet("/register")
 public class RegisterServlet extends HttpServlet{
         private AccountDAO accountDAO = new AccountDAO();
+        private PatientDAO patientDAO = new PatientDAO();
     
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) 
@@ -63,17 +69,29 @@ public class RegisterServlet extends HttpServlet{
             Account newAccount = new Account(username, hashedPassword, email, phone, fullname,  "patient");
             newAccount.setIsActive(true);
             newAccount.setCreateAt(null);  // Tự đăng ký nên không có người tạo
-            
-            int accountId = accountDAO.createAccount(newAccount);
-            
-            if (accountId > 0) {
+
+            try (Connection conn = DBConnection.getConnection()) {
+                conn.setAutoCommit(false);
+                int accountId = accountDAO.createAccount(conn, newAccount);
+                if (accountId <= 0) {
+                    conn.rollback();
+                    throw new SQLException("Không tạo được tài khoản");
+                }
+
+                newAccount.setAccountID(accountId);
+                Patient newPatient = new Patient(fullname, 0, null, null, null, null, accountId);
+                newPatient.setHealthInsurance("Chưa");
+                int patientId = patientDAO.createPatient(conn, newPatient);
+                if (patientId <= 0) {
+                    conn.rollback();
+                    throw new SQLException("Không tạo được bản ghi patient");
+                }
+
+                conn.commit();
                 req.getSession().setAttribute("successMsg", "Tạo tài khoản thành công! Vui lòng đăng nhập.");
                 resp.sendRedirect(req.getContextPath() + "/login");
-            } else {
-                req.setAttribute("error", "Đăng ký thất bại, vui lòng thử lại!");
-                req.getRequestDispatcher("/jsp/auth/register.jsp").forward(req, resp);
+                return;
             }
-            
         } catch (Exception e) {
             e.printStackTrace();
             req.setAttribute("error", "Lỗi hệ thống: " + e.getMessage());

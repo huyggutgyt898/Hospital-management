@@ -15,27 +15,60 @@ public class PrescriptionDAO {
     public boolean createPrescription(Prescription prescription) throws SQLException {
         String sql = "INSERT INTO prescription (appointment_id, medicine_id, quantity, dosage, frequency, instruction) "
                    + "VALUES (?, ?, ?, ?, ?, ?)";
-        
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            
-            stmt.setInt(1, prescription.getAppointmentId());
-            stmt.setInt(2, prescription.getMedicineId());
-            stmt.setInt(3, prescription.getQuantity());
-            stmt.setString(4, prescription.getDosage());
-            stmt.setString(5, prescription.getFrequency());
-            stmt.setString(6, prescription.getInstruction());
-            
-            int affectedRows = stmt.executeUpdate();
-            if (affectedRows > 0) {
-                try (ResultSet rs = stmt.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        prescription.setPrescriptionId(rs.getInt(1));
-                        return true;
-                    }
-                }
+
+        Connection conn = null;
+        PreparedStatement insertStmt = null;
+        PreparedStatement reduceStmt = null;
+        ResultSet rs = null;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            insertStmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            insertStmt.setInt(1, prescription.getAppointmentId());
+            insertStmt.setInt(2, prescription.getMedicineId());
+            insertStmt.setInt(3, prescription.getQuantity());
+            insertStmt.setString(4, prescription.getDosage());
+            insertStmt.setString(5, prescription.getFrequency());
+            insertStmt.setString(6, prescription.getInstruction());
+
+            int affectedRows = insertStmt.executeUpdate();
+            if (affectedRows <= 0) {
+                conn.rollback();
+                return false;
             }
-            return false;
+
+            rs = insertStmt.getGeneratedKeys();
+            if (rs.next()) {
+                prescription.setPrescriptionId(rs.getInt(1));
+            } else {
+                conn.rollback();
+                return false;
+            }
+
+            // Giảm tồn kho thuốc
+            String reduceSql = "UPDATE medicine SET stock_quantity = stock_quantity - ? WHERE medicine_id = ? AND stock_quantity >= ?";
+            reduceStmt = conn.prepareStatement(reduceSql);
+            reduceStmt.setInt(1, prescription.getQuantity());
+            reduceStmt.setInt(2, prescription.getMedicineId());
+            reduceStmt.setInt(3, prescription.getQuantity());
+            int reduced = reduceStmt.executeUpdate();
+            if (reduced <= 0) {
+                // Không đủ tồn kho hoặc lỗi, rollback
+                conn.rollback();
+                return false;
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException ex) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException e) {}
+            throw ex;
+        } finally {
+            if (rs != null) try { rs.close(); } catch (SQLException e) {}
+            if (insertStmt != null) try { insertStmt.close(); } catch (SQLException e) {}
+            if (reduceStmt != null) try { reduceStmt.close(); } catch (SQLException e) {}
+            if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) {}
         }
     }
     
@@ -47,25 +80,56 @@ public class PrescriptionDAO {
         String sql = "INSERT INTO prescription (appointment_id, medicine_id, quantity, dosage, frequency, instruction) "
                    + "VALUES (?, ?, ?, ?, ?, ?)";
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        Connection conn = null;
+        PreparedStatement insertStmt = null;
+        PreparedStatement reduceStmt = null;
+        ResultSet rs = null;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
 
-            stmt.setInt(1, appointmentId);
-            stmt.setInt(2, medicineId);
-            stmt.setInt(3, quantity);
-            stmt.setString(4, dosage);
-            stmt.setString(5, frequency);
-            stmt.setString(6, instruction);
+            insertStmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            insertStmt.setInt(1, appointmentId);
+            insertStmt.setInt(2, medicineId);
+            insertStmt.setInt(3, quantity);
+            insertStmt.setString(4, dosage);
+            insertStmt.setString(5, frequency);
+            insertStmt.setString(6, instruction);
 
-            int affectedRows = stmt.executeUpdate();
-            if (affectedRows > 0) {
-                try (ResultSet rs = stmt.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        return true;
-                    }
-                }
+            int affectedRows = insertStmt.executeUpdate();
+            if (affectedRows <= 0) {
+                conn.rollback();
+                return false;
             }
-            return false;
+
+            rs = insertStmt.getGeneratedKeys();
+            if (!rs.next()) {
+                conn.rollback();
+                return false;
+            }
+
+            // Giảm tồn kho thuốc
+            String reduceSql = "UPDATE medicine SET stock_quantity = stock_quantity - ? WHERE medicine_id = ? AND stock_quantity >= ?";
+            reduceStmt = conn.prepareStatement(reduceSql);
+            reduceStmt.setInt(1, quantity);
+            reduceStmt.setInt(2, medicineId);
+            reduceStmt.setInt(3, quantity);
+            int reduced = reduceStmt.executeUpdate();
+            if (reduced <= 0) {
+                conn.rollback();
+                return false;
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException ex) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException e) {}
+            throw ex;
+        } finally {
+            if (rs != null) try { rs.close(); } catch (SQLException e) {}
+            if (insertStmt != null) try { insertStmt.close(); } catch (SQLException e) {}
+            if (reduceStmt != null) try { reduceStmt.close(); } catch (SQLException e) {}
+            if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) {}
         }
     }
     

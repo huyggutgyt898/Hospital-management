@@ -55,6 +55,29 @@ public class AccountDAO {
         }
         return -1;
     }
+
+    public int createAccount(Connection conn, Account account) throws SQLException {
+        String sql = "INSERT INTO account (username, password_account, email, phone, fullname, role, is_active, created_at) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
+        try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setString(1, account.getUsername());
+            stmt.setString(2, account.getPasswordAccount());
+            stmt.setString(3, account.getEmail());
+            stmt.setString(4, account.getPhone());
+            stmt.setString(5, account.getFullname());
+            stmt.setString(6, account.getRole());
+            stmt.setBoolean(7, account.isIsActive());
+            int affectedRows = stmt.executeUpdate();
+            if (affectedRows > 0) {
+                try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        return generatedKeys.getInt(1);
+                    }
+                }
+            }
+        }
+        return -1;
+    }
     
     public Account findById(int accountId) throws SQLException {
         String sql = "SELECT * FROM account WHERE account_id = ?";

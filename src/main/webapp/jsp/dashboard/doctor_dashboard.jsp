@@ -210,13 +210,14 @@
                         <div class="filter-tab active" id="ftab-all"       onclick="filterTab('all')">Tất cả <span class="tab-count" id="fc-all">0</span></div>
                         <div class="filter-tab"        id="ftab-pending"   onclick="filterTab('pending')">⏳ Chờ xác nhận <span class="tab-count" id="fc-pending">0</span></div>
                         <div class="filter-tab"        id="ftab-confirmed" onclick="filterTab('confirmed')">✅ Đã xác nhận <span class="tab-count" id="fc-confirmed">0</span></div>
+                        <div class="filter-tab"        id="ftab-prescribed" onclick="filterTab('prescribed')">💊 Đã kê đơn <span class="tab-count" id="fc-prescribed">0</span></div>
                         <div class="filter-tab"        id="ftab-completed" onclick="filterTab('completed')">✔ Hoàn thành <span class="tab-count" id="fc-completed">0</span></div>
                         <div class="filter-tab"        id="ftab-cancelled" onclick="filterTab('cancelled')">✖ Đã huỷ <span class="tab-count" id="fc-cancelled">0</span></div>
                     </div>
 
                     <table>
                         <thead>
-                            <tr><th>#</th><th>Bệnh nhân</th><th>Ngày khám</th><th>Giờ</th><th>Triệu chứng</th><th>Trạng thái</th><th>Thao tác</th></tr>
+                            <tr><th>#</th><th>Bệnh nhân</th><th>Ngày khám</th><th>Giờ</th><th>Triệu chứng</th><th>Trạng thái</th><th>Thanh toán</th><th>Thao tác</th></tr>
                         </thead>
                         <tbody id="appointmentsBody">
                             <tr><td colspan="7" class="empty-state"><i class="fas fa-spinner fa-spin me-1"></i>Đang tải...</td></tr>
@@ -255,7 +256,7 @@
                 <div class="card-header"><i class="fas fa-list"></i> Danh sách bệnh nhân</div>
                 <div class="card-body">
                     <table id="patientsTable">
-                        <thead><tr><th>ID</th><th>Họ tên</th><th>Ngày sinh</th><th>Giới tính</th><th>SĐT</th><th>Địa chỉ</th><th>Thao tác</th></tr></thead>
+                        <thead><tr><th>ID</th><th>Họ tên</th><th>Ngày sinh</th><th>Giới tính</th><th>SĐT</th><th>Địa chỉ</th><th>BHYT</th><th>Thao tác</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -265,16 +266,23 @@
         <!-- ========== KHO THUỐC ========== -->
         <div id="medicineStockSection" style="display:none;">
             <div class="card">
-                <div class="card-header"><i class="fas fa-plus-circle"></i> Thêm thuốc mới</div>
+                <div class="card-header" id="medFormHeader"><i class="fas fa-plus-circle"></i> Thêm thuốc mới</div>
                 <div class="card-body">
                     <form id="addMedicineForm" class="form-grid">
                         <div class="form-group"><label>Tên thuốc *</label><input type="text" id="medName" class="form-control" required></div>
                         <div class="form-group"><label>Số lượng tồn *</label><input type="number" id="medQuantity" class="form-control" required></div>
                         <div class="form-group"><label>Đơn vị</label><select id="medUnit" class="form-control"><option>Viên</option><option>Ống</option><option>Chai</option><option>Gói</option><option>Lọ</option></select></div>
                         <div class="form-group"><label>Đơn giá *</label><input type="number" id="medPrice" class="form-control" required></div>
-                        <div class="form-group"><label>Hạn sử dụng</label><input type="date" id="medExpiry" class="form-control"></div>
+                        <div class="form-group"><label>Hạn sử dụng</label><input type="date" id="medExpiry" class="form-control" min=""></div>
                         <div class="form-group"><label>Nhà cung cấp</label><input type="text" id="medSupplier" class="form-control"></div>
-                        <div class="form-group"><label style="visibility:hidden;">x</label><button type="submit" class="btn-success btn-sm" style="width:100%;padding:10px;"><i class="fas fa-plus"></i> Thêm thuốc</button></div>
+                        <div class="form-group">
+                            <label style="visibility:hidden;">x</label>
+                            <button type="submit" id="medSubmitBtn" class="btn-success btn-sm" style="width:100%;padding:10px;"><i class="fas fa-plus"></i> Thêm thuốc</button>
+                        </div>
+                        <div class="form-group">
+                            <label style="visibility:hidden;">x</label>
+                            <button type="button" id="medCancelBtn" class="btn-secondary btn-sm" style="width:100%;padding:10px;display:none;" onclick="resetMedicineForm()"><i class="fas fa-times"></i> Hủy</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -311,7 +319,10 @@
                 </div>
             </div>
             <div class="card">
-                <div class="card-header"><i class="fas fa-history"></i> Lịch sử khám bệnh</div>
+                <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                    <span><i class="fas fa-history"></i> Lịch sử khám bệnh</span>
+                    <button class="btn-sm btn-success" onclick="exportMedicalRecordsToExcel()"><i class="fas fa-file-excel"></i> Xuất Excel</button>
+                </div>
                 <div class="card-body">
                     <div class="search-box">
                         <input type="text" id="searchMedicalRecordInput" placeholder="Nhập tên bệnh nhân..." class="search-input">
@@ -350,6 +361,37 @@
         </div>
     </div>
 
+        <!-- Modal Sửa thông tin bệnh nhân (Doctor) -->
+        <div id="editPatientModalDoctor" class="modal">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg,#059669 0%,#047857 100%); color: white;">
+                    <h4 style="margin:0;"><i class="fas fa-user-edit"></i> Sửa thông tin bệnh nhân</h4>
+                    <span class="close-modal" onclick="closeEditPatientModalDoctor()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="editPatientMessageDoctor"></div>
+                    <input type="hidden" id="editPatientIdDoctor">
+                    <div class="form-group"><label>Họ và tên</label><input type="text" id="editPatientFullnameDoctor" class="form-control"></div>
+                    <div class="form-group"><label>Ngày sinh</label><input type="date" id="editPatientDateOfBirthDoctor" class="form-control"></div>
+                    <div class="form-group"><label>Giới tính</label>
+                        <select id="editPatientGenderDoctor" class="form-control">
+                            <option value="">Chọn giới tính</option>
+                            <option value="male">Nam</option>
+                            <option value="female">Nữ</option>
+                            <option value="other">Khác</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Số điện thoại</label><input type="tel" id="editPatientPhoneDoctor" class="form-control"></div>
+                    <div class="form-group"><label>Địa chỉ</label><input type="text" id="editPatientAddressDoctor" class="form-control"></div>
+                    <div class="form-group"><label><input type="checkbox" id="editPatientHealthInsuranceDoctor"> Có bảo hiểm y tế</label></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-danger" onclick="closeEditPatientModalDoctor()">Hủy</button>
+                    <button class="btn-success" id="btnSavePatientDoctor" onclick="savePatientDoctor()"><i class="fas fa-save"></i> Lưu thay đổi</button>
+                </div>
+            </div>
+        </div>
+
     <!-- Modal chi tiết bệnh án -->
     <div class="modal" id="medicalRecordModal">
         <div class="modal-content" style="max-width:700px;">
@@ -372,6 +414,16 @@
         const contextPath = '<%= request.getContextPath() %>';
         let allAppointments = [];
         let currentFilter = 'all';
+        let editingMedicineId = null;
+
+        function initMedicineExpiryMin() {
+            const expiryInput = document.getElementById('medExpiry');
+            if (!expiryInput) return;
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            expiryInput.min = tomorrow.toISOString().split('T')[0];
+        }
+        initMedicineExpiryMin();
 
         // ==================== NAVIGATION ====================
         function showSection(section, el) {
@@ -436,6 +488,8 @@
             document.getElementById('fc-all').innerText       = cnt('all');
             document.getElementById('fc-pending').innerText   = cnt('pending');
             document.getElementById('fc-confirmed').innerText = cnt('confirmed');
+            const fcPrescribed = document.getElementById('fc-prescribed');
+            if (fcPrescribed) fcPrescribed.innerText = cnt('prescribed');
             document.getElementById('fc-completed').innerText = cnt('completed');
             document.getElementById('fc-cancelled').innerText = cnt('cancelled');
 
@@ -456,7 +510,7 @@
             const list = currentFilter === 'all' ? allAppointments : allAppointments.filter(a => a.status === currentFilter);
             const tbody = document.getElementById('appointmentsBody');
             if (list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-calendar-times me-1"></i>Không có lịch hẹn nào.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-calendar-times me-1"></i>Không có lịch hẹn nào.</td></tr>';
                 return;
             }
             tbody.innerHTML = list.map(a =>
@@ -467,31 +521,49 @@
                 '<td><span style="background:#f1f5f9;padding:3px 10px;border-radius:6px;font-size:13px;">' + esc(a.time) + '</span></td>' +
                 '<td>' + (a.symptoms ? '<div class="sym-preview" title="' + esc(a.symptoms) + '">' + esc(a.symptoms) + '</div>' : '<span style="color:#cbd5e1;">—</span>') + '</td>' +
                 '<td>' + getBadge(a.status) + '</td>' +
+                '<td>' + getPaymentBadge(a) + '</td>' +
                 '<td>' + getActions(a) + '</td>' +
                 '</tr>'
             ).join('');
+        }
+
+        function formatGender(g) {
+            if (!g && g !== 0) return '—';
+            const v = String(g).trim().toLowerCase();
+            if (v === 'male' || v === 'nam') return 'Nam';
+            if (v === 'female' || v === 'nu' || v === 'nữ') return 'Nữ';
+            return 'Khác';
         }
 
         function getBadge(status) {
             const map = {
                 pending:   '<span class="badge-pending"><i class="fas fa-hourglass-half"></i>Chờ xác nhận</span>',
                 confirmed: '<span class="badge-confirmed"><i class="fas fa-check-circle"></i>Đã xác nhận</span>',
+                prescribed:'<span class="badge-confirmed" style="background:#ede9fe;color:#6d28d9;"><i class="fas fa-pills"></i>Đã kê đơn</span>',
                 completed: '<span class="badge-completed"><i class="fas fa-check-double"></i>Hoàn thành</span>',
                 cancelled: '<span class="badge-cancelled"><i class="fas fa-times-circle"></i>Đã huỷ</span>'
             };
             return map[status] || '<span>' + status + '</span>';
         }
 
+        function getPaymentBadge(a) {
+            if (a.status !== 'completed') return '<span style="color:#94a3b8;">—</span>';
+            const ps = a.paymentStatus || 'none';
+            if (ps === 'paid') return '<span class="badge-completed"><i class="fas fa-money-bill"></i>Đã thanh toán</span>';
+            if (ps === 'pending_admin') return '<span class="badge-pending">Chờ admin</span>';
+            if (ps === 'unpaid') return '<span class="badge-cancelled" style="background:#fef3c7;color:#b45309;">Chưa TT</span>';
+            return '<span style="color:#94a3b8;">Chưa lập HĐ</span>';
+        }
+
         function getActions(a) {
-            let html = '<button class="btn-sm btn-primary" onclick="viewDetail(' + a.appointmentId + ')"><i class="fas fa-eye"></i></button> ';
+            let html = '<button class="btn-sm btn-primary" onclick="viewDetail(' + a.appointmentId + ')" title="Xem chi tiết"><i class="fas fa-eye"></i></button> ';
             if (a.status === 'pending') {
                 html += '<button class="btn-sm btn-success" onclick="updateStatus(' + a.appointmentId + ',\'confirmed\')"><i class="fas fa-check me-1"></i>Xác nhận</button> ';
                 html += '<button class="btn-sm btn-danger"  onclick="updateStatus(' + a.appointmentId + ',\'cancelled\')"><i class="fas fa-times me-1"></i>Từ chối</button>';
             } else if (a.status === 'confirmed') {
-                html += '<button class="btn-sm btn-purple" onclick="updateStatus(' + a.appointmentId + ',\'completed\')"><i class="fas fa-check-double me-1"></i>Hoàn thành</button> ';
-                html += '<button class="btn-sm btn-danger"  onclick="updateStatus(' + a.appointmentId + ',\'cancelled\')"><i class="fas fa-times me-1"></i>Huỷ</button>';
-            } else if (a.status === 'completed') {
                 html += '<button class="btn-sm btn-warning" onclick="prescribe(' + a.appointmentId + ',\'' + esc(a.patientName || '') + '\')"><i class="fas fa-prescription-bottle me-1"></i>Kê đơn</button>';
+            } else if (a.status === 'prescribed') {
+                html += '<button class="btn-sm btn-purple" onclick="updateStatus(' + a.appointmentId + ',\'completed\')"><i class="fas fa-check-double me-1"></i>Hoàn thành</button>';
             }
             return html;
         }
@@ -506,15 +578,17 @@
                 drow('Trạng thái', getBadge(a.status)) +
                 drow('Triệu chứng', esc(a.symptoms) || '—') +
                 drow('Lý do khám', esc(a.reason)   || '—') +
-                drow('Ghi chú',    esc(a.notes)    || '—');
+                drow('Ghi chú',    esc(a.notes)    || '—') +
+                (a.status === 'completed' ? drow('Thanh toán', getPaymentBadge(a)) : '');
 
             let footer = '<button class="btn-sm btn-danger" onclick="closeModal(\'appointmentModal\')">Đóng</button>';
             if (a.status === 'pending') {
                 footer = '<button class="btn-sm btn-success" onclick="updateStatus(' + id + ',\'confirmed\');closeModal(\'appointmentModal\')"><i class="fas fa-check me-1"></i>Xác nhận</button> ' +
                          '<button class="btn-sm btn-danger"  onclick="updateStatus(' + id + ',\'cancelled\');closeModal(\'appointmentModal\')"><i class="fas fa-times me-1"></i>Từ chối</button>';
             } else if (a.status === 'confirmed') {
-                footer = '<button class="btn-sm btn-purple" onclick="updateStatus(' + id + ',\'completed\');closeModal(\'appointmentModal\')"><i class="fas fa-check-double me-1"></i>Hoàn thành</button> ' +
-                         '<button class="btn-sm btn-danger" onclick="updateStatus(' + id + ',\'cancelled\');closeModal(\'appointmentModal\')"><i class="fas fa-times me-1"></i>Huỷ</button>';
+                footer = '<button class="btn-sm btn-warning" onclick="prescribe(' + id + ',\'' + esc(a.patientName || '') + '\');closeModal(\'appointmentModal\')"><i class="fas fa-prescription-bottle me-1"></i>Kê đơn</button>';
+            } else if (a.status === 'prescribed') {
+                footer = '<button class="btn-sm btn-purple" onclick="updateStatus(' + id + ',\'completed\');closeModal(\'appointmentModal\')"><i class="fas fa-check-double me-1"></i>Hoàn thành</button>';
             }
             document.getElementById('appointmentModalFooter').innerHTML = footer;
             document.getElementById('appointmentModal').classList.add('show');
@@ -525,7 +599,7 @@
         }
 
         async function updateStatus(id, status) {
-            const labels = { confirmed:'xác nhận', cancelled:'từ chối/huỷ', completed:'hoàn thành' };
+            const labels = { confirmed:'xác nhận', cancelled:'từ chối/huỷ', completed:'hoàn thành', prescribed:'kê đơn' };
             if (!confirm('Bạn có chắc muốn ' + labels[status] + ' lịch hẹn #' + id + '?')) return;
             try {
                 const res = await fetch(contextPath + '/doctor/update-appointment', {
@@ -571,21 +645,30 @@
 
         // ==================== HỒ SƠ BỆNH NHÂN ====================
         async function loadAllPatients() {
+            const tbody = document.querySelector('#patientsTable tbody');
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu bệnh nhân...</td></tr>';
             try {
                 const res = await fetch(contextPath + '/doctor/patients');
-                renderPatientTable(await res.json());
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                }
+                const patients = await res.json();
+                if (!patients || patients.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Chưa có bệnh nhân nào trong hệ thống.</td></tr>';
+                    return;
+                }
+                renderPatientTable(patients);
             } catch(e) {
-                renderPatientTable([
-                    { patientId:1, fullname:'Nguyễn Văn A', dateOfBirth:'1990-05-15', gender:'Nam', phone:'0912345678', address:'Hà Nội' },
-                    { patientId:2, fullname:'Trần Thị B',   dateOfBirth:'1985-10-20', gender:'Nữ', phone:'0987654321', address:'TP.HCM' }
-                ]);
+                console.error('Lỗi tải danh sách bệnh nhân:', e);
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Không thể tải dữ liệu bệnh nhân. Vui lòng thử lại.</td></tr>';
             }
         }
 
         function renderPatientTable(patients) {
             document.querySelector('#patientsTable tbody').innerHTML = patients.map(p =>
-                '<tr><td>' + p.patientId + '</td><td>' + p.fullname + '</td><td>' + (p.dateOfBirth||'—') + '</td><td>' + (p.gender||'—') + '</td><td>' + (p.phone||'—') + '</td><td>' + (p.address||'—') + '</td>' +
-                '<td><button class="btn-sm btn-primary" onclick="viewPatientDetail(' + p.patientId + ')">Xem</button> <button class="btn-sm btn-success" onclick="createMedicalRecord(' + p.patientId + ')">Tạo bệnh án</button></td></tr>'
+                '<tr><td>' + p.patientId + '</td><td>' + esc(p.fullname) + '</td><td>' + (p.dateOfBirth||'—') + '</td><td>' + formatGender(p.gender) + '</td><td>' + (p.phone||'—') + '</td><td>' + (p.address||'—') + '</td>' +
+                '<td style="text-align:center;"><input type="checkbox" onchange="toggleHealthInsurance(' + p.patientId + ', this.checked)" ' + (p.healthInsurance && p.healthInsurance.trim().toLowerCase() === 'có' ? 'checked' : '') + '></td>' +
+                '<td><button class="btn-sm btn-primary" onclick="viewPatientDetail(' + p.patientId + ')">Xem</button> <button class="btn-sm btn-info" onclick="editPatient(' + p.patientId + ')">Sửa</button> <button class="btn-sm btn-success" onclick="createMedicalRecord(' + p.patientId + ')">Tạo bệnh án</button></td></tr>'
             ).join('');
         }
 
@@ -594,9 +677,99 @@
             document.querySelectorAll('#patientsTable tbody tr').forEach(r => { r.style.display = r.innerText.toLowerCase().includes(kw) ? '' : 'none'; });
         }
 
-        function viewPatientDetail(patientId) {
-            document.getElementById('patientModalBody').innerHTML = '<p><strong>ID:</strong> ' + patientId + '</p><p style="color:#94a3b8;font-size:13px;">Kết nối API để lấy chi tiết.</p>';
+        async function viewPatientDetail(patientId) {
+            const modalBody = document.getElementById('patientModalBody');
+            modalBody.innerHTML = '<p><strong>ID:</strong> ' + patientId + '</p><p style="color:#94a3b8;font-size:13px;"><i class="fas fa-spinner fa-spin"></i> Đang tải chi tiết...</p>';
             document.getElementById('patientModal').classList.add('show');
+            try {
+                const res = await fetch(contextPath + '/doctor/patient?patientId=' + patientId);
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                }
+                const p = await res.json();
+                modalBody.innerHTML =
+                    '<p><strong>ID:</strong> ' + p.patientId + '</p>' +
+                    '<p><strong>Họ và tên:</strong> ' + esc(p.fullname) + '</p>' +
+                    '<p><strong>Ngày sinh:</strong> ' + (p.dateOfBirth || '—') + '</p>' +
+                    '<p><strong>Giới tính:</strong> ' + formatGender(p.gender) + '</p>' +
+                    '<p><strong>Điện thoại:</strong> ' + (p.phone || '—') + '</p>' +
+                    '<p><strong>Địa chỉ:</strong> ' + (p.address || '—') + '</p>';
+            } catch (e) {
+                console.error('Lỗi tải chi tiết bệnh nhân:', e);
+                modalBody.innerHTML = '<p><strong>ID:</strong> ' + patientId + '</p><p class="empty-state">Không thể tải chi tiết bệnh nhân.</p>';
+            }
+        }
+
+        function editPatient(patientId) {
+            // open edit modal and populate
+            document.getElementById('editPatientMessageDoctor').innerHTML = '';
+            document.getElementById('editPatientIdDoctor').value = patientId;
+            document.getElementById('editPatientFullnameDoctor').value = '';
+            document.getElementById('editPatientDateOfBirthDoctor').value = '';
+            document.getElementById('editPatientGenderDoctor').value = '';
+            document.getElementById('editPatientPhoneDoctor').value = '';
+            document.getElementById('editPatientAddressDoctor').value = '';
+            document.getElementById('editPatientHealthInsuranceDoctor').checked = false;
+            document.getElementById('editPatientModalDoctor').classList.add('show');
+            fetch(contextPath + '/doctor/patient?patientId=' + patientId).then(r => r.json()).then(p => {
+                document.getElementById('editPatientFullnameDoctor').value = p.fullname || '';
+                document.getElementById('editPatientDateOfBirthDoctor').value = p.dateOfBirth || '';
+                document.getElementById('editPatientGenderDoctor').value = p.gender || '';
+                document.getElementById('editPatientPhoneDoctor').value = p.phone || '';
+                document.getElementById('editPatientAddressDoctor').value = p.address || '';
+                document.getElementById('editPatientHealthInsuranceDoctor').checked = (p.healthInsurance && p.healthInsurance.trim().toLowerCase() === 'có');
+            }).catch(e => { console.error(e); });
+        }
+
+        function closeEditPatientModalDoctor() {
+            document.getElementById('editPatientModalDoctor').classList.remove('show');
+        }
+
+        async function savePatientDoctor() {
+            const patientId = document.getElementById('editPatientIdDoctor').value;
+            const fullname = document.getElementById('editPatientFullnameDoctor').value.trim();
+            const dateOfBirth = document.getElementById('editPatientDateOfBirthDoctor').value.trim();
+            const gender = document.getElementById('editPatientGenderDoctor').value;
+            const phone = document.getElementById('editPatientPhoneDoctor').value.trim();
+            const address = document.getElementById('editPatientAddressDoctor').value.trim();
+            const has = document.getElementById('editPatientHealthInsuranceDoctor').checked ? 'Có' : 'Chưa';
+            const body = new URLSearchParams();
+            body.append('patientId', patientId);
+            body.append('fullname', fullname);
+            body.append('dateOfBirth', dateOfBirth);
+            body.append('gender', gender);
+            body.append('phone', phone);
+            body.append('address', address);
+            body.append('healthInsurance', has);
+            try {
+                const res = await fetch(contextPath + '/doctor/update-patient', { method: 'POST', body: body });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('success', data.message || 'Đã lưu');
+                    closeEditPatientModalDoctor();
+                    loadAllPatients();
+                } else {
+                    showToast('error', data.message || 'Lỗi');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('error', 'Lỗi kết nối');
+            }
+        }
+
+        async function toggleHealthInsurance(patientId, checked) {
+            const val = checked ? 'Có' : 'Chưa';
+            const body = new URLSearchParams();
+            body.append('patientId', patientId);
+            body.append('healthInsurance', val);
+            try {
+                const res = await fetch(contextPath + '/doctor/update-patient', { method: 'POST', body: body });
+                const data = await res.json();
+                if (!data.success) showToast('error', data.message || 'Cập nhật thất bại');
+            } catch (e) {
+                console.error(e);
+                showToast('error', 'Lỗi kết nối');
+            }
         }
 
         // ==================== KHO THUỐC ====================
@@ -631,6 +804,59 @@
             }
         }
 
+        function editMedicine(id) {
+            fetch(contextPath + '/doctor/medicines/' + id)
+                .then(res => res.ok ? res.json() : Promise.reject(res))
+                .then(m => {
+                    editingMedicineId = id;
+                    document.getElementById('medName').value = m.medicineName || '';
+                    document.getElementById('medQuantity').value = m.stockQuantity || '';
+                    document.getElementById('medUnit').value = m.unit || 'Viên';
+                    document.getElementById('medPrice').value = m.unitPrice || '';
+                    document.getElementById('medExpiry').value = m.expiryDate || '';
+                    document.getElementById('medSupplier').value = m.supplier || '';
+                    document.getElementById('medFormHeader').innerHTML = '<i class="fas fa-edit"></i> Cập nhật thuốc';
+                    document.getElementById('medSubmitBtn').innerHTML = '<i class="fas fa-save"></i> Lưu thay đổi';
+                    document.getElementById('medCancelBtn').style.display = 'block';
+                })
+                .catch(err => {
+                    console.error('Lỗi lấy thông tin thuốc:', err);
+                    showToast('error', 'Không thể tải thông tin thuốc để sửa.');
+                });
+        }
+
+        async function deleteMedicine(id) {
+            if (!confirm('Bạn có chắc muốn xóa thuốc này không?')) return;
+            try {
+                const res = await fetch(contextPath + '/doctor/medicines/' + id, {
+                    method: 'DELETE'
+                });
+                const result = await res.json();
+                if (!result.success) {
+                    const message = result.message || 'Xóa thất bại';
+                    if (/đơn thuốc|foreign key|parent row/i.test(message)) {
+                        alert(message);
+                    } else {
+                        showToast('error', message);
+                    }
+                } else {
+                    showToast('success', result.message || 'Xóa thành công');
+                    loadMedicine();
+                }
+            } catch (error) {
+                console.error('Lỗi xóa thuốc:', error);
+                showToast('error', 'Không thể xóa thuốc.');
+            }
+        }
+
+        function resetMedicineForm() {
+            editingMedicineId = null;
+            document.getElementById('addMedicineForm').reset();
+            document.getElementById('medFormHeader').innerHTML = '<i class="fas fa-plus-circle"></i> Thêm thuốc mới';
+            document.getElementById('medSubmitBtn').innerHTML = '<i class="fas fa-plus"></i> Thêm thuốc';
+            document.getElementById('medCancelBtn').style.display = 'none';
+        }
+
         function searchMedicine() {
             const kw = document.getElementById('searchMedicineInput').value.toLowerCase();
             document.querySelectorAll('#medicineTable tbody tr').forEach(r => { r.style.display = (r.cells[1]?.innerText||'').toLowerCase().includes(kw) ? '' : 'none'; });
@@ -647,24 +873,47 @@
             const expiryDate = document.getElementById('medExpiry').value;
             const supplier = document.getElementById('medSupplier').value;
 
-            // Kiểm tra dữ liệu bắt buộc
+            const stockQuantityNum = Number(stockQuantity);
+            const unitPriceNum = Number(unitPrice);
+            const minExpiry = new Date();
+            minExpiry.setDate(minExpiry.getDate() + 1);
+            minExpiry.setHours(0,0,0,0);
+
             if (!medicineName || !unit || !stockQuantity || !unitPrice) {
                 showToast('error', 'Vui lòng điền đầy đủ thông tin bắt buộc!');
                 return;
+            }
+            if (!Number.isFinite(stockQuantityNum) || stockQuantityNum <= 0) {
+                showToast('error', 'Số lượng tồn phải là số lớn hơn 0');
+                return;
+            }
+            if (!Number.isFinite(unitPriceNum) || unitPriceNum <= 0) {
+                showToast('error', 'Đơn giá phải là số lớn hơn 0');
+                return;
+            }
+            if (expiryDate) {
+                const selectedExpiry = new Date(expiryDate);
+                selectedExpiry.setHours(0,0,0,0);
+                if (selectedExpiry < minExpiry) {
+                    showToast('error', 'Hạn sử dụng phải từ ngày mai trở đi');
+                    return;
+                }
             }
 
             // Tạo form data
             const formData = new URLSearchParams();
             formData.append('medicineName', medicineName);
             formData.append('unit', unit);
-            formData.append('stockQuantity', stockQuantity);
-            formData.append('unitPrice', unitPrice);
+            formData.append('stockQuantity', stockQuantityNum);
+            formData.append('unitPrice', unitPriceNum);
             formData.append('expiryDate', expiryDate || '');
             formData.append('supplier', supplier || '');
 
             try {
-                const response = await fetch(contextPath + '/doctor/medicines', {
-                    method: 'POST',
+                const method = editingMedicineId ? 'PUT' : 'POST';
+            const url = contextPath + '/doctor/medicines' + (editingMedicineId ? '/' + editingMedicineId : '');
+            const response = await fetch(url, {
+                    method,
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: formData
                 });
@@ -674,7 +923,7 @@
 
                 if (result.success) {
                     // Reset form
-                    e.target.reset();
+                    resetMedicineForm();
                     // Tải lại danh sách thuốc
                     loadMedicine();
                 }
@@ -686,48 +935,158 @@
 
 
         // ==================== HỒ SƠ BỆNH ÁN ====================
+        let medicalRecordsCache = [];
+
         async function loadPatientSelect() {
             const sel = document.getElementById('recordPatientId');
             sel.innerHTML = '<option value="">-- Chọn bệnh nhân --</option>';
             try {
                 const res = await fetch(contextPath + '/doctor/patients');
-                (await res.json()).forEach(p => { sel.innerHTML += '<option value="' + p.patientId + '">' + p.fullname + '</option>'; });
-            } catch(e) {
-                sel.innerHTML += '<option value="1">Nguyễn Văn A</option><option value="2">Trần Thị B</option>';
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                }
+                const patients = await res.json();
+                patients.forEach(p => {
+                    sel.innerHTML += '<option value="' + p.patientId + '">' + esc(p.fullname) + '</option>';
+                });
+            } catch (e) {
+                console.error('Lỗi tải danh sách bệnh nhân cho hồ sơ bệnh án:', e);
+                sel.innerHTML += '<option value="">Không thể tải bệnh nhân</option>';
             }
         }
 
-        function loadMedicalRecords() {
-            document.querySelector('#medicalRecordsTable tbody').innerHTML =
-                '<tr><td>1</td><td>Nguyễn Văn A</td><td>01/05/2024</td><td>Cảm cúm</td><td>Nghỉ ngơi, uống thuốc</td><td>BS. Nguyễn</td><td><button class="btn-sm btn-primary" onclick="viewMedicalRecord(1)">Chi tiết</button></td></tr>' +
-                '<tr><td>2</td><td>Trần Thị B</td><td>05/05/2024</td><td>Đau dạ dày</td><td>Uống thuốc, kiêng ăn</td><td>BS. Nguyễn</td><td><button class="btn-sm btn-primary" onclick="viewMedicalRecord(2)">Chi tiết</button></td></tr>';
+        async function loadMedicalRecords(search = '') {
+            const tbody = document.querySelector('#medicalRecordsTable tbody');
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-spinner fa-spin me-1"></i> Đang tải dữ liệu...</td></tr>';
+            try {
+                const url = contextPath + '/doctor/medical-records' + (search ? '?search=' + encodeURIComponent(search) : '');
+                const res = await fetch(url);
+                const data = await res.json();
+                medicalRecordsCache = Array.isArray(data) ? data : [];
+                if (!medicalRecordsCache.length) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Chưa có hồ sơ bệnh án để hiển thị.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = medicalRecordsCache.map(r =>
+                    '<tr>' +
+                    '<td>' + r.id + '</td>' +
+                    '<td>' + esc(r.patientName) + '</td>' +
+                    '<td>' + esc(r.examinationDate) + '</td>' +
+                    '<td>' + esc(r.diagnosis) + '</td>' +
+                    '<td>' + esc(r.treatmentMethod) + '</td>' +
+                    '<td>' + esc(r.doctorName) + '</td>' +
+                    '<td><button class="btn-sm btn-primary" onclick="viewMedicalRecord(' + r.id + ')"><i class="fas fa-eye"></i> Xem</button></td>' +
+                    '</tr>'
+                ).join('');
+            } catch (e) {
+                console.error('Lỗi tải hồ sơ bệnh án:', e);
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Không thể tải dữ liệu. Vui lòng thử lại.</td></tr>';
+            }
         }
 
         function searchMedicalRecord() {
-            const kw = document.getElementById('searchMedicalRecordInput').value.toLowerCase();
-            document.querySelectorAll('#medicalRecordsTable tbody tr').forEach(r => { r.style.display = r.innerText.toLowerCase().includes(kw) ? '' : 'none'; });
+            const kw = document.getElementById('searchMedicalRecordInput').value.trim();
+            loadMedicalRecords(kw);
         }
 
         function createMedicalRecord(patientId) {
             showSection('medicalRecords', null);
-            setTimeout(() => { document.getElementById('recordPatientId').value = patientId; }, 300);
+            setTimeout(() => {
+                document.getElementById('recordPatientId').value = patientId;
+            }, 250);
         }
 
         function viewMedicalRecord(id) {
+            const record = medicalRecordsCache.find(r => r.id === id || r.id == id);
+            if (!record) {
+                showToast('error', 'Không tìm thấy chi tiết hồ sơ.');
+                return;
+            }
             document.getElementById('medicalRecordModalBody').innerHTML =
-                '<p><strong>Mã bệnh án:</strong> ' + id + '</p><p><strong>Bệnh nhân:</strong> Nguyễn Văn A</p>' +
-                '<p><strong>Ngày khám:</strong> 01/05/2024</p><p><strong>Chẩn đoán:</strong> Cảm cúm</p>' +
-                '<p><strong>Triệu chứng:</strong> Sốt, ho, đau họng</p><p><strong>Điều trị:</strong> Nghỉ ngơi, Paracetamol</p>';
+                '<div class="detail-row"><span class="detail-label">Mã bệnh án:</span><span class="detail-value">' + record.id + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Bệnh nhân:</span><span class="detail-value">' + esc(record.patientName) + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Bác sĩ:</span><span class="detail-value">' + esc(record.doctorName) + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Ngày khám:</span><span class="detail-value">' + esc(record.examinationDate) + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Chẩn đoán:</span><span class="detail-value">' + esc(record.diagnosis) + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Triệu chứng:</span><span class="detail-value">' + esc(record.symptoms) + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Kết quả xét nghiệm:</span><span class="detail-value">' + esc(record.testResults) + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Phương pháp điều trị:</span><span class="detail-value">' + esc(record.treatmentMethod) + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Ghi chú:</span><span class="detail-value">' + esc(record.notes) + '</span></div>';
             document.getElementById('medicalRecordModal').classList.add('show');
         }
 
-        document.getElementById('medicalRecordForm')?.addEventListener('submit', function(e) {
+        document.getElementById('medicalRecordForm')?.addEventListener('submit', async function(e) {
             e.preventDefault();
-            if (!this.recordPatientId.value || !this.recordDate.value || !this.recordDiagnosis.value) { alert('Vui lòng nhập đầy đủ thông tin bắt buộc!'); return; }
-            alert('Đã tạo hồ sơ bệnh án thành công!');
-            this.reset();
-            loadMedicalRecords();
+            const patientId = this.recordPatientId.value;
+            const examinationDate = this.recordDate.value;
+            const diagnosis = this.recordDiagnosis.value;
+            if (!patientId || !examinationDate || !diagnosis) {
+                showToast('error', 'Vui lòng nhập đầy đủ thông tin bắt buộc!');
+                return;
+            }
+            const payload = new URLSearchParams();
+            payload.append('patientId', patientId);
+            payload.append('examinationDate', examinationDate);
+            payload.append('diagnosis', diagnosis);
+            payload.append('symptoms', this.recordSymptoms.value || '');
+            payload.append('testResults', this.recordTestResults.value || '');
+            payload.append('treatmentMethod', this.recordTreatment.value || '');
+            payload.append('notes', this.recordNotes.value || '');
+            try {
+                const res = await fetch(contextPath + '/doctor/medical-records', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: payload.toString()
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showToast('success', result.message || 'Lưu hồ sơ thành công!');
+                    this.reset();
+                    loadMedicalRecords();
+                } else {
+                    showToast('error', result.message || 'Lưu hồ sơ thất bại.');
+                }
+            } catch (error) {
+                console.error('Lỗi lưu hồ sơ bệnh án:', error);
+                showToast('error', 'Lỗi kết nối đến máy chủ.');
+            }
         });
+
+        function exportMedicalRecordsToExcel() {
+            if (!medicalRecordsCache || medicalRecordsCache.length === 0) {
+                showToast('error', 'Không có hồ sơ bệnh án để xuất.');
+                return;
+            }
+            const header = ['ID', 'Bệnh nhân', 'Ngày khám', 'Chẩn đoán', 'Triệu chứng', 'Kết quả xét nghiệm', 'Phương pháp điều trị', 'Ghi chú', 'Bác sĩ', 'Ngày tạo'];
+            const rows = medicalRecordsCache.map((r, index) => ({
+                cells: [
+                    r.id,
+                    r.patientName,
+                    r.examinationDate,
+                    r.diagnosis,
+                    r.symptoms,
+                    r.testResults,
+                    r.treatmentMethod,
+                    r.notes,
+                    r.doctorName,
+                    r.createdAt || ''
+                ],
+                odd: index % 2 === 1
+            }));
+            const headerHtml = '<tr style="background:#2d3748;color:#fff;font-weight:bold;text-align:center;">' + header.map(col => '<th style="padding:10px 8px;border:1px solid #94a3b8;">' + col + '</th>').join('') + '</tr>';
+            const rowsHtml = rows.map(row => '<tr style="background:' + (row.odd ? '#e2e8f0' : '#ffffff') + ';">' + row.cells.map(cell => '<td style="padding:8px 10px;border:1px solid #94a3b8;">' + String(cell || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</td>').join('') + '</tr>').join('');
+            const html = '<html><head><meta charset="UTF-8"></head><body><table style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;">' + headerHtml + rowsHtml + '</table></body></html>';
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'medical_records_' + new Date().toISOString().slice(0,10) + '.xls';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
 
         // ==================== UTILS ====================
         function closeModal(id) { document.getElementById(id).classList.remove('show'); }

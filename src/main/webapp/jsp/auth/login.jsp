@@ -343,7 +343,7 @@
           </div>
 
           <div class="forgot-link">
-            <a href="#">Quên mật khẩu?</a>
+            <a href="#" onclick="alert('Vui lòng liên hệ với admin để lấy lại mật khẩu.'); return false;">Quên mật khẩu?</a>
           </div>
 
           <button type="submit" class="btn-login">ĐĂNG NHẬP</button>

@@ -22,8 +22,7 @@
             Appointment appt = appointmentDAO.getAppointmentById(appointmentId);
             if (appt != null) {
                 status = appt.getStatus();
-                // Chỉ cho phép kê đơn khi lịch hẹn đã hoàn thành (completed)
-                canPrescribe = "completed".equals(status) || "confirmed".equals(status);
+                canPrescribe = "confirmed".equals(status);
                 if (!canPrescribe && patientName == null) {
                     patientName = appt.getPatientName();
                 }
@@ -141,7 +140,7 @@
 <div class="container-custom">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <a href="/jsp/dashboard/doctor_dashboard.jsp" class="text-decoration-none">
+        <a href="${pageContext.request.contextPath}/jsp/dashboard/doctor_dashboard.jsp" class="text-decoration-none">
             <i class="fas fa-arrow-left me-1"></i> Quay lại Dashboard
         </a>
         <div>
@@ -166,7 +165,7 @@
                             <%= status != null ? status : "Không xác định" %>
                         </span>
                     </p>
-                    <a href="${pageContext.request.contextPath}/jsp/doctor/doctor_dashboard.jsp" class="btn btn-primary mt-3">
+                    <a href="${pageContext.request.contextPath}/jsp/dashboard/doctor_dashboard.jsp" class="btn btn-primary mt-3">
                         <i class="fas fa-arrow-left me-1"></i> Quay lại Dashboard
                     </a>
                 </div>
@@ -434,21 +433,19 @@
         prescriptionItems.forEach((item, index) => {
             const itemTotal = item.unitPrice * item.quantity;
             total += itemTotal;
-            html += `
-                <div class="prescription-item">
-                    <div class="prescription-item-info">
-                        <strong>${escapeHtml(item.medicineName)}</strong><br>
-                        Số lượng: ${item.quantity} ${escapeHtml(item.unit)} | Đơn giá: ${item.unitPrice.toLocaleString()}đ<br>
-                        Liều lượng: ${escapeHtml(item.dosage)} | Tần suất: ${escapeHtml(item.frequency)}<br>
-                        Thời gian: ${item.duration} ngày | Hướng dẫn: ${escapeHtml(item.instruction)}<br>
-                        <span class="text-primary">Thành tiền: ${itemTotal.toLocaleString()}đ</span>
-                    </div>
-                    <div class="prescription-item-actions">
-                        <button class="btn btn-warning btn-sm" onclick="editPrescriptionItem(${index})"><i class="fas fa-edit"></i></button>
-                        <button class="btn-danger-custom" onclick="removePrescriptionItem(${index})"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-            `;
+            html += '<div class="prescription-item">' +
+                        '<div class="prescription-item-info">' +
+                            '<strong>' + escapeHtml(item.medicineName) + '</strong><br>' +
+                            'Số lượng: ' + item.quantity + ' ' + escapeHtml(item.unit) + ' | Đơn giá: ' + item.unitPrice.toLocaleString() + 'đ<br>' +
+                            'Liều lượng: ' + escapeHtml(item.dosage) + ' | Tần suất: ' + escapeHtml(item.frequency) + '<br>' +
+                            'Thời gian: ' + item.duration + ' ngày | Hướng dẫn: ' + escapeHtml(item.instruction) + '<br>' +
+                            '<span class="text-primary">Thành tiền: ' + itemTotal.toLocaleString() + 'đ</span>' +
+                        '</div>' +
+                        '<div class="prescription-item-actions">' +
+                            '<button class="btn btn-warning btn-sm" onclick="editPrescriptionItem(' + index + ')"><i class="fas fa-edit"></i></button>' +
+                            '<button class="btn-danger-custom" onclick="removePrescriptionItem(' + index + ')"><i class="fas fa-trash"></i></button>' +
+                        '</div>' +
+                    '</div>';
         });
         container.innerHTML = html;
         document.getElementById('totalAmount').innerText = total.toLocaleString();
@@ -510,7 +507,7 @@
             const result = await response.json();
             if (result.success) {
                 alert('Lưu đơn thuốc thành công!');
-                window.location.href = contextPath + '/jsp/doctor/doctor_dashboard.jsp';
+                window.location.href = contextPath + '/jsp/dashboard/doctor_dashboard.jsp';
             } else {
                 alert('Lỗi: ' + result.message);
             }

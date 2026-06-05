@@ -645,16 +645,29 @@
             bookedSlots = data.bookedSlots || [];
         } catch (e) { /* ignore, show all */ }
 
+        const today = new Date().toISOString().split('T')[0];
+        const nowTime = new Date().toTimeString().slice(0, 5);
+        const isToday = date === today;
+
         let html = '<div class="time-grid">';
+        let availableCount = 0;
         slotsAll.forEach(slot => {
             const isBooked = bookedSlots.includes(slot);
-            html += '<span class="time-slot' + (isBooked ? ' booked' : '') + '" ' +
-                (isBooked ? '' : 'onclick="selectTime(\'' + slot + '\')"') +
-                ' data-time="' + slot + '">' +
-                slot + (isBooked ? ' <small>(đã có)</small>' : '') +
-                '</span>';
+            const isPast = isToday && slot <= nowTime;
+            if (isBooked || isPast) return;
+            availableCount += 1;
+            html += '<span class="time-slot" onclick="selectTime(\'' + slot + '\')" data-time="' + slot + '">' + slot + '</span>';
         });
         html += '</div>';
+        if (availableCount === 0) {
+            document.getElementById('timeSlots').innerHTML = '<p style="font-size:13px; color:#94a3b8; margin-top:8px;">' +
+                '<i class="fas fa-info-circle me-1"></i>' +
+                (isToday
+                    ? pt('Không còn khung giờ khả dụng cho ngày hôm nay.', 'No available time slots remain for today.')
+                    : pt('Không có khung giờ khả dụng cho ngày này.', 'No available time slots for this date.')) +
+                '</p>';
+            return;
+        }
         document.getElementById('timeSlots').innerHTML = html;
     }
 
@@ -761,7 +774,7 @@
         if (!appointmentId) return;
 
         try {
-            const res = await fetch(`${ctx}/patient/check-status?appointmentId=${appointmentId}`);
+            const res = await fetch(ctx + '/patient/check-status?appointmentId=' + appointmentId);
             const data = await res.json();
 
             if (data.status === 'confirmed') {

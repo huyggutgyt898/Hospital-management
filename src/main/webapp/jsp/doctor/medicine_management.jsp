@@ -335,7 +335,7 @@
     // Mở modal sửa thuốc
     async function openEditModal(medicineId) {
         try {
-            const response = await fetch(`${contextPath}/doctor/medicines/${medicineId}`);
+            const response = await fetch(contextPath + '/doctor/medicines/' + medicineId);
             const med = await response.json();
             if (med) {
                 document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit me-2"></i>Sửa thông tin thuốc';
@@ -429,7 +429,7 @@
         if (!confirm('Bạn có chắc chắn muốn xóa thuốc này không?')) return;
 
         try {
-            const response = await fetch(`${contextPath}/doctor/medicines/${medicineId}`, { method: 'DELETE' });
+            const response = await fetch(contextPath + '/doctor/medicines/' + medicineId, { method: 'DELETE' });
             const result = await response.json();
             alert(result.message);
             loadMedicines();

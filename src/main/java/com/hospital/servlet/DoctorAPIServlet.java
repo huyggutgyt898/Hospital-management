@@ -11,9 +11,13 @@ import com.hospital.model.Medicine;
 import java.sql.Date;
 import com.hospital.dao.AppointmentDAO;
 import com.hospital.dao.DoctorDAO;
+import com.hospital.dao.MedicalRecordDAO;
+import com.hospital.dao.PaymentDAO;
 import com.hospital.model.Account;
 import com.hospital.model.Appointment;
 import com.hospital.model.Doctor;
+import com.hospital.model.MedicalRecord;
+import com.hospital.service.BillingService;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
@@ -32,8 +36,12 @@ public class DoctorAPIServlet extends HttpServlet {
 
     private AppointmentDAO appointmentDAO = new AppointmentDAO();
     private DoctorDAO doctorDAO = new DoctorDAO();
+    private MedicalRecordDAO medicalRecordDAO = new MedicalRecordDAO();
+    private com.hospital.dao.PatientDAO patientDAO = new com.hospital.dao.PatientDAO();
+    private PaymentDAO paymentDAO = new PaymentDAO();
     private MedicineDAO medicineDAO = new MedicineDAO();
     private PrescriptionDAO prescriptionDAO = new PrescriptionDAO();
+    private BillingService billingService = new BillingService();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -74,6 +82,8 @@ public class DoctorAPIServlet extends HttpServlet {
                 for (int i = 0; i < list.size(); i++) {
                     if (i > 0) json.append(",");
                     Appointment a = list.get(i);
+                    com.hospital.model.Payment payment = paymentDAO.getByAppointmentId(a.getAppointmentId());
+                    String paymentStatus = payment != null && payment.getPaymentStatus() != null ? payment.getPaymentStatus() : "";
                     json.append("{")
                         .append("\"appointmentId\":").append(a.getAppointmentId()).append(",")
                         .append("\"patientId\":").append(a.getPatientId()).append(",")
@@ -83,7 +93,8 @@ public class DoctorAPIServlet extends HttpServlet {
                         .append("\"status\":\"").append(esc(a.getStatus())).append("\",")
                         .append("\"symptoms\":\"").append(esc(a.getSymptoms())).append("\",")
                         .append("\"reason\":\"").append(esc(a.getReason())).append("\",")
-                        .append("\"notes\":\"").append(esc(a.getNotes())).append("\"")
+                        .append("\"notes\":\"").append(esc(a.getNotes())).append("\",")
+                        .append("\"paymentStatus\":\"").append(esc(paymentStatus)).append("\"")
                         .append("}");
                 }
                 json.append("]");
@@ -140,7 +151,8 @@ public class DoctorAPIServlet extends HttpServlet {
                         .append("\"fullname\":\"").append(esc(p.getFullname())).append("\",")
                         .append("\"phone\":\"").append(esc(p.getPhone() != null ? p.getPhone() : "")).append("\",")
                         .append("\"gender\":\"").append(esc(p.getGender() != null ? p.getGender() : "")).append("\",")
-                        .append("\"address\":\"").append(esc(p.getAddress() != null ? p.getAddress() : "")).append("\",")
+                    .append("\"address\":\"").append(esc(p.getAddress() != null ? p.getAddress() : "")).append("\",")
+                    .append("\"healthInsurance\":\"").append(esc(p.getHealthInsurance() != null ? p.getHealthInsurance() : "")).append("\",")
                         .append("\"dateOfBirth\":\"").append(p.getDateOfBirth() != null ? p.getDateOfBirth().toString() : "").append("\"")
                         .append("}");
                 }
@@ -149,6 +161,77 @@ public class DoctorAPIServlet extends HttpServlet {
             } catch (Exception e) {
                 e.printStackTrace();
                 out.print("[]");
+            }
+        }
+
+        // ---- GET /doctor/medical-records ----
+        else if ("/medical-records".equals(pathInfo)) {
+            try {
+                Doctor doctor = doctorDAO.getDoctorByAccountId(account.getAccountID());
+                if (doctor == null) {
+                    out.print("[]");
+                    return;
+                }
+                String search = req.getParameter("search");
+                java.util.List<MedicalRecord> records = medicalRecordDAO.getMedicalRecordsByDoctor(doctor.getDoctorId(), search);
+                StringBuilder json = new StringBuilder("[");
+                for (int i = 0; i < records.size(); i++) {
+                    if (i > 0) json.append(",");
+                    MedicalRecord r = records.get(i);
+                    json.append("{")
+                        .append("\"id\":").append(r.getId()).append(",")
+                        .append("\"patientId\":").append(r.getPatientId()).append(",")
+                        .append("\"patientName\":\"").append(esc(r.getPatientName())).append("\",")
+                        .append("\"doctorName\":\"").append(esc(r.getDoctorName())).append("\",")
+                        .append("\"examinationDate\":\"").append(esc(r.getExaminationDate())).append("\",")
+                        .append("\"diagnosis\":\"").append(esc(r.getDiagnosis())).append("\",")
+                        .append("\"symptoms\":\"").append(esc(r.getSymptoms())).append("\",")
+                        .append("\"testResults\":\"").append(esc(r.getTestResults())).append("\",")
+                        .append("\"treatmentMethod\":\"").append(esc(r.getTreatmentMethod())).append("\",")
+                        .append("\"notes\":\"").append(esc(r.getNotes())).append("\",")
+                        .append("\"createdAt\":\"").append(r.getCreatedAt() != null ? r.getCreatedAt() : "").append("\"")
+                        .append("}");
+                }
+                json.append("]");
+                out.print(json.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
+                out.print("[]");
+            }
+        }
+        
+        // ---- GET /doctor/patient?patientId=123 - Lấy chi tiết bệnh nhân ----
+        else if ("/patient".equals(pathInfo)) {
+            try {
+                String patientIdParam = req.getParameter("patientId");
+                if (patientIdParam == null || patientIdParam.isEmpty()) {
+                    resp.setStatus(400);
+                    out.print("{\"error\":\"Missing patientId\"}");
+                    return;
+                }
+                int patientId = Integer.parseInt(patientIdParam);
+                com.hospital.dao.PatientDAO patientDAO = new com.hospital.dao.PatientDAO();
+                com.hospital.model.Patient p = patientDAO.getPatientById(patientId);
+                if (p == null) {
+                    resp.setStatus(404);
+                    out.print("{\"error\":\"Patient not found\"}");
+                    return;
+                }
+                StringBuilder patientJson = new StringBuilder();
+                patientJson.append("{")
+                        .append("\"patientId\":").append(p.getPatientId()).append(",")
+                        .append("\"fullname\":\"").append(esc(p.getFullname())).append("\",")
+                        .append("\"phone\":\"").append(esc(p.getPhone() != null ? p.getPhone() : "")).append("\",")
+                        .append("\"gender\":\"").append(esc(p.getGender() != null ? p.getGender() : "")).append("\",")
+                        .append("\"address\":\"").append(esc(p.getAddress() != null ? p.getAddress() : "")).append("\",")
+                        .append("\"healthInsurance\":\"").append(esc(p.getHealthInsurance() != null ? p.getHealthInsurance() : "")).append("\",")
+                        .append("\"dateOfBirth\":\"").append(p.getDateOfBirth() != null ? p.getDateOfBirth().toString() : "").append("\"")
+                        .append("}");
+                out.print(patientJson.toString());
+            } catch (Exception e) {
+                e.printStackTrace();
+                resp.setStatus(500);
+                out.print("{\"error\":\"Unable to load patient details\"}");
             }
         }
         
@@ -177,6 +260,8 @@ public class DoctorAPIServlet extends HttpServlet {
                 out.print("[]");
             }
         }
+
+        
         
         System.out.println("PathInfo: '" + req.getPathInfo() + "'");
         System.out.println("ServletPath: '" + req.getServletPath() + "'");
@@ -234,6 +319,79 @@ public class DoctorAPIServlet extends HttpServlet {
                     out.print("{\"success\":true,\"message\":\"" + msg + "\"}");
                 } else {
                     out.print("{\"success\":false,\"message\":\"Cập nhật thất bại!\"}");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                out.print("{\"success\":false,\"message\":\"Lỗi hệ thống: " + esc(e.getMessage()) + "\"}");
+            }
+        }
+
+        // ---- POST /doctor/update-patient ----
+        else if ("/update-patient".equals(pathInfo)) {
+            try {
+                int patientId = Integer.parseInt(req.getParameter("patientId"));
+                String fullname = req.getParameter("fullname") != null ? req.getParameter("fullname") : "";
+                String dateOfBirthParam = req.getParameter("dateOfBirth");
+                String gender = req.getParameter("gender") != null ? req.getParameter("gender") : "";
+                String phone = req.getParameter("phone") != null ? req.getParameter("phone") : "";
+                String address = req.getParameter("address") != null ? req.getParameter("address") : "";
+                String healthInsurance = req.getParameter("healthInsurance") != null ? req.getParameter("healthInsurance") : "";
+                String email = req.getParameter("email") != null ? req.getParameter("email") : "";
+
+                Date dateOfBirth = null;
+                if (dateOfBirthParam != null && !dateOfBirthParam.trim().isEmpty()) {
+                    dateOfBirth = Date.valueOf(dateOfBirthParam.trim());
+                }
+
+                boolean ok1 = patientDAO.updatePatientInfo(patientId, fullname, phone, email, address, gender, dateOfBirth);
+                boolean ok2 = true;
+                try { ok2 = patientDAO.updateHealthInsurance(patientId, healthInsurance); } catch (Exception ex) { ex.printStackTrace(); }
+
+                if (ok1) out.print("{\"success\":true,\"message\":\"Cập nhật thông tin bệnh nhân thành công\"}");
+                else out.print("{\"success\":false,\"message\":\"Cập nhật thất bại\"}");
+            } catch (Exception e) {
+                e.printStackTrace();
+                out.print("{\"success\":false,\"message\":\"Lỗi server\"}");
+            }
+        }
+
+        // ---- POST /doctor/medical-records ----
+        else if ("/medical-records".equals(pathInfo)) {
+            try {
+                int patientId = Integer.parseInt(req.getParameter("patientId"));
+                String examinationDate = req.getParameter("examinationDate");
+                String diagnosis = req.getParameter("diagnosis");
+                String symptoms = req.getParameter("symptoms");
+                String testResults = req.getParameter("testResults");
+                String treatmentMethod = req.getParameter("treatmentMethod");
+                String notes = req.getParameter("notes");
+
+                if (examinationDate == null || examinationDate.isEmpty() || diagnosis == null || diagnosis.isEmpty()) {
+                    out.print("{\"success\":false,\"message\":\"Ngày khám và chẩn đoán là bắt buộc.\"}");
+                    return;
+                }
+
+                Doctor doctor = doctorDAO.getDoctorByAccountId(account.getAccountID());
+                if (doctor == null) {
+                    out.print("{\"success\":false,\"message\":\"Không tìm thấy thông tin bác sĩ.\"}");
+                    return;
+                }
+
+                MedicalRecord record = new MedicalRecord();
+                record.setPatientId(patientId);
+                record.setDoctorId(doctor.getDoctorId());
+                record.setExaminationDate(examinationDate);
+                record.setDiagnosis(diagnosis);
+                record.setSymptoms(symptoms);
+                record.setTestResults(testResults);
+                record.setTreatmentMethod(treatmentMethod);
+                record.setNotes(notes);
+
+                int createdId = medicalRecordDAO.createMedicalRecord(record);
+                if (createdId > 0) {
+                    out.print("{\"success\":true,\"message\":\"Đã lưu hồ sơ bệnh án thành công.\",\"recordId\":" + createdId + "}");
+                } else {
+                    out.print("{\"success\":false,\"message\":\"Lưu hồ sơ thất bại.\"}");
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -341,7 +499,16 @@ public class DoctorAPIServlet extends HttpServlet {
                 }
 
                 if (allSuccess) {
-                    out.print("{\"success\":true,\"message\":\"Đã lưu đơn thuốc!\"}");
+                    // Kê đơn xong thì đánh dấu lịch hẹn đã hoàn thành.
+                    // Dùng giá trị 'completed' hợp lệ với ràng buộc chk_status.
+                    Appointment appt = appointmentDAO.getAppointmentById(appointmentId);
+                    if (appt != null && !"completed".equals(appt.getStatus())
+                            && !"cancelled".equals(appt.getStatus())) {
+                        appointmentDAO.updateStatus(appointmentId, "completed");
+                    }
+                    // Tạo/sync hóa đơn thanh toán ngay khi kê đơn xong.
+                    billingService.syncPaymentRecord(appointmentId);
+                    out.print("{\"success\":true,\"message\":\"Đã lưu đơn thuốc và tạo hóa đơn!\"}");
                 } else {
                     out.print("{\"success\":false,\"message\":\"Có lỗi xảy ra!\"}");
                 }

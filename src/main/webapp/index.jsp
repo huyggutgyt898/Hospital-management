@@ -347,6 +347,131 @@
             color: var(--text-muted);
         }
 
+        /* Introduction Section */
+        .intro-section {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            padding: 60px 40px;
+            margin-bottom: 0;
+        }
+
+        .intro-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .intro-title {
+            text-align: center;
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 50px;
+        }
+
+        .intro-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .intro-card {
+            background: #fff;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .intro-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.15);
+        }
+
+        .intro-card-image {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .intro-card-content {
+            padding: 30px 25px;
+        }
+
+        .intro-card h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .intro-card p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* Contact Section */
+        .contact-section {
+            background: #fff;
+            padding: 60px 40px;
+            border-top: 1px solid var(--border);
+        }
+
+        .contact-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .contact-title {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 15px;
+        }
+
+        .contact-subtitle {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+        }
+
+        .social-grid {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .social-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--primary);
+            transition: all 0.3s;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .social-icon:hover {
+            background: var(--primary);
+            color: #fff;
+            transform: scale(1.1);
+        }
+
+        .social-icon i {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* Footer */
         .footer {
             background: #1e293b;
@@ -363,6 +488,10 @@
             .hero h1 {
                 font-size: 36px;
             }
+            .intro-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 30px;
+            }
         }
 
         @media (max-width: 600px) {
@@ -374,6 +503,25 @@
             }
             .hero {
                 padding: 100px 20px 60px;
+            }
+            .intro-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .intro-section {
+                padding: 40px 20px;
+            }
+            .intro-title {
+                font-size: 24px;
+            }
+            .contact-section {
+                padding: 40px 20px;
+            }
+            .contact-title {
+                font-size: 24px;
+            }
+            .social-grid {
+                gap: 20px;
             }
         }
         
@@ -407,8 +555,8 @@
         </div>
         <div class="nav-links">
             <a href="#"><%= isPatientUser ? pt(patientIsEn, "Trang chủ", "Home") : "Trang chủ" %></a>
-            <a href="#"><%= isPatientUser ? pt(patientIsEn, "Giới thiệu", "About") : "Giới thiệu" %></a>
-            <a href="#"><%= isPatientUser ? pt(patientIsEn, "Liên hệ", "Contact") : "Liên hệ" %></a>
+            <a href="#intro-section"><%= isPatientUser ? pt(patientIsEn, "Giới thiệu", "About") : "Giới thiệu" %></a>
+            <a href="#contact-section"><%= isPatientUser ? pt(patientIsEn, "Liên hệ", "Contact") : "Liên hệ" %></a>
             
             <% if (account != null) { %>
                 <span class="user-name-nav"><i class="fas fa-user"></i> <%= fullname %></span>
@@ -458,19 +606,19 @@
         <div class="container">
             <div class="stats-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px; text-align: center; margin-bottom: 50px;">
                 <div class="stat-item">
-                    <div class="stat-number" style="font-size: 42px; font-weight: 800; color: #2563eb;">50+</div>
+                    <div class="stat-number" data-target="50" data-suffix="+" style="font-size: 42px; font-weight: 800; color: #2563eb;">0+</div>
                     <div class="stat-label" style="font-size: 14px; color: #64748b; margin-top: 8px;">Bác sĩ chuyên khoa</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-number" style="font-size: 42px; font-weight: 800; color: #2563eb;">10.000+</div>
+                    <div class="stat-number" data-target="10000" data-suffix="+" style="font-size: 42px; font-weight: 800; color: #2563eb;">0+</div>
                     <div class="stat-label" style="font-size: 14px; color: #64748b; margin-top: 8px;">Bệnh nhân mỗi năm</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-number" style="font-size: 42px; font-weight: 800; color: #2563eb;">98%</div>
+                    <div class="stat-number" data-target="98" data-suffix="%" style="font-size: 42px; font-weight: 800; color: #2563eb;">0%</div>
                     <div class="stat-label" style="font-size: 14px; color: #64748b; margin-top: 8px;">Hài lòng của bệnh nhân</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-number" style="font-size: 42px; font-weight: 800; color: #2563eb;">24/7</div>
+                    <div class="stat-number" data-target="24" data-suffix="/7" style="font-size: 42px; font-weight: 800; color: #2563eb;">0/7</div>
                     <div class="stat-label" style="font-size: 14px; color: #64748b; margin-top: 8px;">Dịch vụ cấp cứu</div>
                 </div>
             </div>
@@ -523,6 +671,64 @@
         </div>
     </section>
 
+    <!-- Introduction Section -->
+    <section class="intro-section" id="intro-section">
+        <div class="intro-container">
+            <h2 class="intro-title"><%= isPatientUser ? pt(patientIsEn, "Tại sao chọn HMS?", "Why choose HMS?") : "Tại sao chọn HMS?" %></h2>
+            <div class="intro-grid">
+                <div class="intro-card">
+                    <img src="${pageContext.request.contextPath}/assets/img/intro-facility.jpg" alt="Cơ sở vật chất" class="intro-card-image">
+                    <div class="intro-card-content">
+                        <h3><%= isPatientUser ? pt(patientIsEn, "Cơ sở vật chất hiện đại", "Modern Facilities") : "Cơ sở vật chất hiện đại" %></h3>
+                        <p><%= isPatientUser ? pt(patientIsEn, "Trang thiết bị y tế tiên tiến, phòng mổ với công nghệ mới nhất để đảm bảo an toàn và hiệu quả cao", "Advanced medical equipment with latest technology") : "Trang thiết bị y tế tiên tiến, phòng mổ với công nghệ mới nhất để đảm bảo an toàn và hiệu quả cao" %></p>
+                    </div>
+                </div>
+                <div class="intro-card">
+                    <img src="${pageContext.request.contextPath}/assets/img/intro-team.jpg" alt="Đội ngũ y tế" class="intro-card-image">
+                    <div class="intro-card-content">
+                        <h3><%= isPatientUser ? pt(patientIsEn, "Đội ngũ y tế chuyên nghiệp", "Professional Medical Team") : "Đội ngũ y tế chuyên nghiệp" %></h3>
+                        <p><%= isPatientUser ? pt(patientIsEn, "Bác sĩ giàu kinh nghiệm, lương y có chuyên môn cao, cam kết mang lại dịch vụ y tế tốt nhất", "Expert doctors and experienced professionals") : "Bác sĩ giàu kinh nghiệm, lương y có chuyên môn cao, cam kết mang lại dịch vụ y tế tốt nhất" %></p>
+                    </div>
+                </div>
+                <div class="intro-card">
+                    <img src="${pageContext.request.contextPath}/assets/img/intro-satisfaction.jpg" alt="Sự hài lòng bệnh nhân" class="intro-card-image">
+                    <div class="intro-card-content">
+                        <h3><%= isPatientUser ? pt(patientIsEn, "Sự hài lòng của bệnh nhân", "Patient Satisfaction") : "Sự hài lòng của bệnh nhân" %></h3>
+                        <p><%= isPatientUser ? pt(patientIsEn, "Hơn 98% bệnh nhân hài lòng với dịch vụ, chất lượng chăm sóc và sự thân thiện của nhân viên", "Over 98% patient satisfaction rate") : "Hơn 98% bệnh nhân hài lòng với dịch vụ, chất lượng chăm sóc và sự thân thiện của nhân viên" %></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact-section" id="contact-section">
+        <div class="contact-container">
+            <h2 class="contact-title"><%= isPatientUser ? pt(patientIsEn, "Liên hệ với chúng tôi", "Contact Us") : "Liên hệ với chúng tôi" %></h2>
+            <p class="contact-subtitle"><%= isPatientUser ? pt(patientIsEn, "Theo dõi chúng tôi trên các nền tảng xã hội", "Follow us on social media") : "Theo dõi chúng tôi trên các nền tảng xã hội" %></p>
+            <div class="social-grid">
+                <a href="https://zalo.me/hms" class="social-icon" title="Zalo">
+                    <i class="fas fa-comment-dots"></i>
+                </a>
+                <a href="mailto:contact@hms.com" class="social-icon" title="Email">
+                    <i class="fas fa-envelope"></i>
+                </a>
+                <a href="https://facebook.com/hms" class="social-icon" title="Facebook">
+                    <i class="fab fa-facebook-f"></i>
+                </a>
+                <a href="https://www.tiktok.com/@to.nguyn074?is_from_webapp=1&sender_device=pc" class="social-icon" title="TikTok">
+                    <i class="fab fa-tiktok"></i>
+                </a>
+                <a href="https://www.youtube.com/@123hp6" class="social-icon" title="YouTube">
+                    <i class="fab fa-youtube"></i>
+                </a>
+                <a href="https://maps.google.com" class="social-icon" title="Google Maps">
+                    <i class="fas fa-map-marker-alt"></i>
+                </a>
+            </div>
+        </div>
+    </section>
+
     <!-- Footer -->
     <footer class="footer">
         <p>&copy; 2026 Hospital Management System. All rights reserved.</p>
@@ -530,6 +736,9 @@
     </footer>
 
     <script>
+        // Thêm biến ctx (context path) sớm để các hàm JS sử dụng
+        const ctx = '<%= request.getContextPath() %>';
+
         // ===== KIỂM TRA TRẠNG THÁI LỊCH HẸN ĐỊNH KỲ =====
         let lastCheckedStatus = {};
         let readNotifications = [];
@@ -636,37 +845,12 @@
             const container = document.getElementById('notificationList');
 
             try {
-            
-                const response = await fetch(ctx + '/patient/my-appointments');
-                
-                console.log('Đang tải thông báo...');
-                
-                const appointments = await response.json();
-                
-                // LƯU TRẠNG THÁI BAN ĐẦU
-                appointments.forEach(apt => {
-                    lastCheckedStatus[apt.appointmentId] = apt.status;
-                });
-                                
-                if (!response.ok) {
-                    throw new Error('Lỗi HTTP: ' + response.status);
-                }
+                const response = await fetch(ctx + '/patient/notifications');
+                const notis = await response.json();
 
-                
-                console.log('Dữ liệu nhận được:', appointments);
+                if (!response.ok) throw new Error('HTTP ' + response.status);
 
-                if (!appointments || appointments.length === 0) {
-                    container.innerHTML = '<div style="text-align: center; padding: 30px; color: #94a3b8;"><i class="fas fa-bell-slash"></i> Chưa có lịch hẹn nào</div>';
-                    document.getElementById('notiBadge').style.display = 'none';
-                    return;
-                }
-
-                // Lọc các lịch hẹn (pending hoặc confirmed)
-                const relevantAppointments = appointments.filter(apt => 
-                    apt.status === 'pending' || apt.status === 'confirmed'
-                );
-
-                if (relevantAppointments.length === 0) {
+                if (!notis || notis.length === 0) {
                     container.innerHTML = '<div style="text-align: center; padding: 30px; color: #94a3b8;"><i class="fas fa-bell-slash"></i> Chưa có thông báo mới</div>';
                     document.getElementById('notiBadge').style.display = 'none';
                     return;
@@ -675,64 +859,46 @@
                 let html = '';
                 let unreadCount = 0;
 
-                relevantAppointments.forEach(apt => {
-                    // Tính unread: nếu status = 'pending' thì coi là chưa đọc
-                    const isUnread = true;
+                notis.forEach(n => {
+                    const type = n.type || '';
+                    let icon = 'fa-bell';
+                    let color = '#2563eb';
+                    let isUnread = (type === 'booking' || type === 'invoice');
+
+                    if (type === 'booking' || type === 'booking_confirmed') { icon = 'fa-calendar-check'; color = type === 'booking_confirmed' ? '#10b981' : '#2563eb'; }
+                    else if (type === 'invoice') { icon = 'fa-file-invoice-dollar'; color = '#f59e0b'; }
+                    else if (type === 'payment_success') { icon = 'fa-money-bill-wave'; color = '#10b981'; }
+
                     if (isUnread) unreadCount++;
 
-                    let iconClass = '';
-                    let color = '';
-                    let statusText = '';
-                    let title = '';
-
-                    if (apt.status === 'confirmed') {
-                        iconClass = 'fa-check-circle';
-                        color = '#10b981';
-                        statusText = 'Đã xác nhận';
-                        title = '✅ Lịch hẹn đã được xác nhận!';
-                    } else {
-                        iconClass = 'fa-hourglass-half';
-                        color = '#f59e0b';
-                        statusText = 'Đang chờ xác nhận';
-                        title = '📅 Lịch hẹn khám bệnh';
-                    }
-
-                    html += `
-                        <div class="notification-item ${isUnread ? 'unread' : ''}" onclick="markAsRead(this, ${apt.appointmentId})">
-                            <div class="notification-icon" style="background: ${isUnread ? '#fef3c7' : '#dbeafe'}">
-                                <i class="fas ${iconClass}" style="color: ${color};"></i>
-                            </div>
-
-                            <div class="notification-content">
-                                <div class="notification-title">${title}</div>
-
-                                <div>
-                                    ${apt.doctorName} - ${apt.date} lúc ${apt.time}
-                                </div>
-
-                                <div class="notification-time" style="color: ${color};">
-                                    <i class="fas ${iconClass}"></i> ${statusText}
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    html += '<div class="notification-item ' + (isUnread ? 'unread' : '') + '" onclick="markAsRead(this)">' +
+                            '<div class="notification-icon" style="background: ' + (isUnread ? '#fef3c7' : '#dbeafe') + '">' +
+                                '<i class="fas ' + icon + '" style="color: ' + color + ';"></i>' +
+                            '</div>' +
+                            '<div class="notification-content">' +
+                                '<div class="notification-title">' + escapeHtml(n.title) + '</div>' +
+                                '<div>' + escapeHtml(n.message) + '</div>' +
+                                '<div class="notification-time" style="color: ' + color + ';">' + escapeHtml(n.time || '') + '</div>' +
+                            '</div>' +
+                        '</div>';
                 });
 
                 container.innerHTML = html;
 
-                // Cập nhật badge số lượng thông báo chưa đọc
                 const badge = document.getElementById('notiBadge');
-                if (unreadCount > 0) {
-                    badge.textContent = unreadCount;
-                    badge.style.display = 'inline-block';
-                } else {
-                    badge.style.display = 'none';
-                }
+                if (unreadCount > 0) { badge.textContent = unreadCount; badge.style.display = 'inline-block'; }
+                else { badge.style.display = 'none'; }
 
             } catch (error) {
                 console.error('Lỗi tải thông báo:', error);
                 container.innerHTML = '<div style="text-align: center; padding: 30px; color: #ef4444;"><i class="fas fa-exclamation-circle"></i> Lỗi tải thông báo</div>';
             }
+        }
+
+        // Escape HTML helper to avoid XSS when inserting server-provided text
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
         }
 
         // Toggle notification dropdown
@@ -782,12 +948,34 @@
             }
         });
 
-        // Thêm biến ctx (context path)
-        const ctx = '<%= request.getContextPath() %>';
+        function animateStatNumbers() {
+            document.querySelectorAll('.stat-number[data-target]').forEach(el => {
+                const target = parseInt(el.dataset.target, 10) || 0;
+                const suffix = el.dataset.suffix || '';
+                const duration = 1200;
+                const fps = 60;
+                const steps = Math.max(Math.round((duration / 1000) * fps), 1);
+                const increment = target / steps;
+                let current = 0;
+
+                const update = () => {
+                    current += increment;
+                    if (current >= target) {
+                        el.textContent = target + suffix;
+                        return;
+                    }
+                    el.textContent = Math.floor(current) + suffix;
+                    requestAnimationFrame(update);
+                };
+
+                requestAnimationFrame(update);
+            });
+        }
 
         // Load thông báo lần đầu khi trang load
         document.addEventListener('DOMContentLoaded', function() {
             loadAppointmentNotifications();
+            animateStatNumbers();
         });
     </script>
     <% if (isPatientUser) { %>

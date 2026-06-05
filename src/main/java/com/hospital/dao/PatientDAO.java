@@ -15,8 +15,8 @@ public class PatientDAO {
      * @return patientId nếu thành công, -1 nếu thất bại
      */
     public int createPatient(Patient patient) throws SQLException {
-        String sql = "INSERT INTO patient (fullname, age, gender, phone, address, date_of_birth, account_id) "
-                   + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO patient (fullname, age, gender, phone, address, date_of_birth, account_id, health_insurance) "
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -28,7 +28,38 @@ public class PatientDAO {
             stmt.setString(5, patient.getAddress());
             stmt.setDate(6, patient.getDateOfBirth());
             stmt.setInt(7, patient.getAccountId());
+            String healthInsurance = patient.getHealthInsurance() != null && !patient.getHealthInsurance().trim().isEmpty()
+                    ? patient.getHealthInsurance().trim()
+                    : "Chưa";
+            stmt.setString(8, healthInsurance);
             
+            int affectedRows = stmt.executeUpdate();
+            if (affectedRows > 0) {
+                try (ResultSet rs = stmt.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        return rs.getInt(1);
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    public int createPatient(Connection conn, Patient patient) throws SQLException {
+        String sql = "INSERT INTO patient (fullname, age, gender, phone, address, date_of_birth, account_id, health_insurance) "
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setString(1, patient.getFullname());
+            stmt.setInt(2, patient.getAge());
+            stmt.setString(3, patient.getGender());
+            stmt.setString(4, patient.getPhone());
+            stmt.setString(5, patient.getAddress());
+            stmt.setDate(6, patient.getDateOfBirth());
+            stmt.setInt(7, patient.getAccountId());
+            String healthInsurance = patient.getHealthInsurance() != null && !patient.getHealthInsurance().trim().isEmpty()
+                    ? patient.getHealthInsurance().trim()
+                    : "Chưa";
+            stmt.setString(8, healthInsurance);
             int affectedRows = stmt.executeUpdate();
             if (affectedRows > 0) {
                 try (ResultSet rs = stmt.getGeneratedKeys()) {
@@ -280,6 +311,19 @@ public class PatientDAO {
             return stmt.executeUpdate() > 0;
         }
     }
+
+    /**
+     * Cập nhật thông tin bảo hiểm y tế (health_insurance)
+     */
+    public boolean updateHealthInsurance(int patientId, String healthInsurance) throws SQLException {
+        String sql = "UPDATE patient SET health_insurance = ? WHERE patient_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, healthInsurance);
+            stmt.setInt(2, patientId);
+            return stmt.executeUpdate() > 0;
+        }
+    }
     
     // ==================== DELETE ====================
     
@@ -395,6 +439,12 @@ public class PatientDAO {
         patient.setAddress(rs.getString("address"));
         patient.setDateOfBirth(rs.getDate("date_of_birth"));
         patient.setAccountId(rs.getInt("account_id"));
+
+        try {
+            patient.setHealthInsurance(rs.getString("health_insurance"));
+        } catch (SQLException e) {
+            // cột có thể chưa có
+        }
         
         // Lấy thêm created_at nếu có
         try {
@@ -450,12 +500,13 @@ public class PatientDAO {
     }
     
     /**
-     * Cập nhật thông tin bệnh nhân (fullname, phone, email, address)
+     * Cập nhật thông tin bệnh nhân (fullname, phone, email, address, gender, date_of_birth)
      */
     public boolean updatePatientInfo(int patientId, String fullname, String phone,
-                                      String email, String address) throws SQLException {
+                                      String email, String address, String gender,
+                                      Date dateOfBirth) throws SQLException {
         String sql = "UPDATE patient p JOIN account a ON p.account_id = a.account_id "
-                   + "SET p.fullname = ?, p.phone = ?, a.email = ?, p.address = ?, a.fullname = ? "
+                   + "SET p.fullname = ?, p.phone = ?, a.email = ?, p.address = ?, a.fullname = ?, p.gender = ?, p.date_of_birth = ? "
                    + "WHERE p.patient_id = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -464,9 +515,23 @@ public class PatientDAO {
             stmt.setString(3, email);
             stmt.setString(4, address);
             stmt.setString(5, fullname);
-            stmt.setInt(6, patientId);
+            stmt.setString(6, gender);
+            if (dateOfBirth != null) {
+                stmt.setDate(7, dateOfBirth);
+            } else {
+                stmt.setNull(7, Types.DATE);
+            }
+            stmt.setInt(8, patientId);
             return stmt.executeUpdate() > 0;
         }
+    }
+
+    /**
+     * Cập nhật thông tin bệnh nhân (fullname, phone, email, address)
+     */
+    public boolean updatePatientInfo(int patientId, String fullname, String phone,
+                                      String email, String address) throws SQLException {
+        return updatePatientInfo(patientId, fullname, phone, email, address, null, null);
     }
     
     /**

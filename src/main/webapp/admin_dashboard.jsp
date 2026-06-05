@@ -561,6 +561,10 @@
                                                     onclick="showSection('reportsSection', event)">
                                                     <i class="fas fa-chart-bar"></i> <span>Báo cáo thống kê</span>
                                                 </a>
+                                                <a href="#" class="menu-item"
+                                                    onclick="showSection('paymentsSection', event)">
+                                                    <i class="fas fa-money-check-alt"></i> <span>Xác nhận thanh toán</span>
+                                                </a>
                                             </div>
                                         </div>
 
@@ -608,6 +612,17 @@
                                                         </div>
                                                         <div class="stat-icon"><i class="fas fa-calendar-check"></i>
                                                         </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="card" style="margin-bottom: 24px;">
+                                                    <div class="card-header"><i class="fas fa-chart-line me-2"></i>Doanh thu (30 ngày gần nhất)</div>
+                                                    <div class="card-body">
+                                                        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:16px;">
+                                                            <div><span style="color:#64748b;font-size:13px;">Tổng doanh thu đã thu</span>
+                                                            <h3 id="totalRevenueDisplay" style="color:#059669;margin:4px 0 0;">0đ</h3></div>
+                                                        </div>
+                                                        <canvas id="revenueChart" height="100"></canvas>
                                                     </div>
                                                 </div>
 
@@ -1026,6 +1041,39 @@
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            <!-- Payments Section -->
+                                            <div id="paymentsSection" style="display:none;">
+                                                <div class="filter-tabs" style="margin-bottom:16px;display:flex;gap:8px;">
+                                                    <button class="btn-sm btn-edit" onclick="loadPayments('pending')">Chờ xác nhận (tiền mặt)</button>
+                                                    <button class="btn-sm btn-view" onclick="loadPayments('unpaid')">Chưa thanh toán</button>
+                                                    <button class="btn-sm btn-add" onclick="loadPayments('paid')">Đã thanh toán</button>
+                                                    <button class="btn-sm" style="background:#64748b;color:#fff;" onclick="loadPayments('all')">Tất cả</button>
+                                                </div>
+                                                <div class="card">
+                                                    <div class="card-header"><i class="fas fa-money-check-alt me-2"></i>Hóa đơn &amp; thanh toán</div>
+                                                    <div class="card-body">
+                                                        <table>
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>ID</th>
+                                                                    <th>Lịch hẹn</th>
+                                                                    <th>Bệnh nhân</th>
+                                                                    <th>Bác sĩ</th>
+                                                                    <th>Ngày khám</th>
+                                                                    <th>Tổng tiền</th>
+                                                                    <th>PTTT</th>
+                                                                    <th>Trạng thái</th>
+                                                                    <th>Thao tác</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody id="paymentsTableBody">
+                                                                <tr><td colspan="9" class="text-center text-muted">Đang tải...</td></tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <script
@@ -1255,7 +1303,7 @@
             if (event) event.preventDefault(); // ✅ Ngăn href="#" navigate
             
             // Ẩn tất cả sections
-            const sections = ['dashboardSection', 'doctorsSection', 'addDoctorSection', 'patientsSection', 'reportsSection'];
+            const sections = ['dashboardSection', 'doctorsSection', 'addDoctorSection', 'patientsSection', 'reportsSection', 'paymentsSection'];
             sections.forEach(sec => {
                 const el = document.getElementById(sec);
                 if (el) el.style.display = 'none';
@@ -1271,7 +1319,8 @@
                 'doctorsSection': 'Quản lý bác sĩ',
                 'addDoctorSection': 'Thêm tài khoản bác sĩ',
                 'patientsSection': 'Quản lý bệnh nhân',
-                'reportsSection': 'Báo cáo thống kê'
+                'reportsSection': 'Báo cáo thống kê',
+                'paymentsSection': 'Xác nhận thanh toán'
             };
             document.getElementById('pageTitle').innerText = titles[sectionId] || '';
 
@@ -1286,10 +1335,112 @@
             else if (sectionId === 'doctorsSection') loadDoctors();
             else if (sectionId === 'patientsSection') loadPatients();
             else if (sectionId === 'reportsSection') loadReportsList();
+            else if (sectionId === 'paymentsSection') loadPayments('pending');
+        }
+
+        let revenueChartInstance = null;
+
+        async function loadRevenueChart() {
+            try {
+                const res = await fetch(contextPath + '/payment/revenue');
+                const data = await res.json();
+                const fmt = n => new Intl.NumberFormat('vi-VN').format(Math.round(n)) + 'đ';
+                document.getElementById('totalRevenueDisplay').innerText = fmt(data.totalRevenue || 0);
+                const ctx = document.getElementById('revenueChart');
+                if (!ctx) return;
+                const labels = data.labels || [];
+                const values = data.values || [];
+                if (revenueChartInstance) revenueChartInstance.destroy();
+                revenueChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Doanh thu (VNĐ)',
+                            data: values,
+                            backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    callback: function(index) {
+                                        const lab = this.chart.data.labels[index] || '';
+                                        // format YYYY-MM-DD -> DD/MM
+                                        return lab ? (lab.substring(8) + '/' + lab.substring(5,7)) : lab;
+                                    },
+                                    maxRotation: 45,
+                                    minRotation: 0,
+                                    autoSkip: true,
+                                    maxTicksLimit: 15
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: v => new Intl.NumberFormat('vi-VN', { notation: 'compact' }).format(v)
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Revenue chart error', e);
+            }
+        }
+
+        async function loadPayments(filter) {
+            const tbody = document.getElementById('paymentsTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+            try {
+                const res = await fetch(contextPath + '/payment/admin/list?filter=' + (filter || 'all'));
+                const list = await res.json();
+                if (!list.length) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Không có dữ liệu</td></tr>';
+                    return;
+                }
+                const fmt = n => new Intl.NumberFormat('vi-VN').format(Math.round(n)) + 'đ';
+                const statusText = s => ({
+                    unpaid: 'Chưa TT', pending_admin: 'Chờ xác nhận', paid: 'Đã TT'
+                })[s] || s;
+                const methodText = m => m === 'cash' ? 'Tiền mặt' : (m === 'qr' ? 'QR' : '—');
+                tbody.innerHTML = list.map(p => {
+                    let action = '—';
+                    if (p.paymentStatus === 'pending_admin' && (p.paymentMethod === 'cash' || p.paymentMethod === 'qr')) {
+                        action = '<button class="btn-sm btn-add" onclick="confirmCashPayment(' + p.paymentId + ')"><i class="fas fa-check"></i> Xác nhận</button>';
+                    }
+                    return '<tr><td>' + p.paymentId + '</td><td>#' + p.appointmentId + '</td><td>' + escapeXml(p.patientName) + '</td><td>' + escapeXml(p.doctorName) + '</td><td>' + escapeXml(p.appointmentDate || '') + '</td><td><strong>' + fmt(p.totalAmount) + '</strong></td><td>' + methodText(p.paymentMethod) + '</td><td>' + statusText(p.paymentStatus) + '</td><td>' + action + '</td></tr>';
+                }).join('');
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-danger">Lỗi tải dữ liệu</td></tr>';
+            }
+        }
+
+        async function confirmCashPayment(paymentId) {
+            if (!confirm('Xác nhận đã thanh toán cho hóa đơn #' + paymentId + '?')) return;
+            try {
+                const body = new URLSearchParams();
+                body.append('paymentId', paymentId);
+                const res = await fetch(contextPath + '/payment/admin/confirm', { method: 'POST', body: body });
+                const data = await res.json();
+                alert(data.message || (data.success ? 'OK' : 'Lỗi'));
+                if (data.success) {
+                    loadPayments('pending');
+                    loadRevenueChart();
+                }
+            } catch (e) {
+                alert('Lỗi kết nối');
+            }
         }
 
         // Load Dashboard
         async function loadDashboard() {
+            loadRevenueChart();
             try {
                 const res = await fetch(contextPath + '/admin/recent-doctors');
                 if (res.ok) {
