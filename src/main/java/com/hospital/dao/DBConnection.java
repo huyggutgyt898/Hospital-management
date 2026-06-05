@@ -13,12 +13,16 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DBConnection {
-    private static final String URL = "jdbc:mysql://localhost:3306/hopital_hms" +
-             "?useUnicode=true" +
-             "&characterEncoding=UTF-8" +
-             "&serverTimezone=Asia/Ho_Chi_Minh";
-    private static final String USER = "root";
-    private static final String PASSWORD = "1234";
+    private static final String MYSQL_HOST = envOrDefault("MYSQL_HOST", "localhost");
+    private static final String MYSQL_PORT = envOrDefault("MYSQL_PORT", "3306");
+    private static final String MYSQL_DB = envOrDefault("MYSQL_DB", "hospital_hms");
+    private static final String URL = envOrDefault("MYSQL_URL",
+            "jdbc:mysql://" + MYSQL_HOST + ":" + MYSQL_PORT + "/" + MYSQL_DB +
+            "?useUnicode=true" +
+            "&characterEncoding=UTF-8" +
+            "&serverTimezone=Asia/Ho_Chi_Minh");
+    private static final String USER = envOrDefault("MYSQL_USER", "root");
+    private static final String PASSWORD = envOrDefault("MYSQL_PASSWORD", "1234");
     
     static {
         try {
@@ -30,6 +34,11 @@ public class DBConnection {
     
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL, USER, PASSWORD);
+    }
+    
+    private static String envOrDefault(String name, String defaultValue) {
+        String value = System.getenv(name);
+        return value != null && !value.isEmpty() ? value : defaultValue;
     }
     
     public static void closeConnection(Connection conn) {

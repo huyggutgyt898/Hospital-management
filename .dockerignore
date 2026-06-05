@@ -1,0 +1,8 @@
+target/
+*.log
+*.class
+.idea/
+.vscode/
+.git
+**/node_modules
+**/*.iml
